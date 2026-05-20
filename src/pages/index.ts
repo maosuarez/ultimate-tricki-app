@@ -1,0 +1,10 @@
+export { ViewDashboard } from './HomePage';
+export { ViewGame } from './GamePage';
+export { ViewLobby } from './LobbyPage';
+export { ViewCreate } from './CreatePage';
+export { ViewJoin } from './JoinPage';
+export { ViewProfile } from './ProfilePage';
+export { ViewHistory } from './HistoryPage';
+export { ViewReplay } from './ReplayPage';
+export { ViewSettings } from './SettingsPage';
+export { ViewLogin } from './LoginPage';
