@@ -1,48 +1,27 @@
 import { type FC, useState } from 'react';
 import type { GameState, Player } from '../../types/game';
-import { checkWin } from '../../utils/boardUtils';
 import { SubBoard } from './SubBoard';
 
 interface UltimateBoardProps {
   game: GameState;
-  setGame: (game: GameState) => void;
   blueColor: string;
   redColor: string;
-  viewerTurn?: boolean;
+  canInteract: boolean;
+  onMove: (sb: number, cell: number) => void;
 }
 
 export const UltimateBoard: FC<UltimateBoardProps> = ({
   game,
-  setGame,
   blueColor,
   redColor,
-  viewerTurn = false,
+  canInteract,
+  onMove,
 }) => {
   const [hover, setHover] = useState<{ sb: number; cell: number } | null>(null);
 
   const playCell = (sbIdx: number, cellIdx: number) => {
-    if (!viewerTurn) return;
-    const next: GameState = JSON.parse(JSON.stringify(game)) as GameState;
-    next.sb[sbIdx].cells[cellIdx] = next.turn;
-    const w = checkWin(next.sb[sbIdx].cells);
-    if (w.winner) {
-      next.sb[sbIdx].winner = w.winner;
-      next.sb[sbIdx].winLine = w.line;
-    }
-    next.lastMove = { sb: sbIdx, cell: cellIdx };
-    const targetSb = next.sb[cellIdx];
-    next.activeSb = targetSb.winner ? null : cellIdx;
-    next.turn = next.turn === 'X' ? 'O' : 'X';
-    next.history = [
-      ...next.history,
-      {
-        n: (next.history[next.history.length - 1]?.n ?? 0) + 1,
-        by: game.turn,
-        sb: sbIdx,
-        cell: cellIdx,
-      },
-    ];
-    setGame(next);
+    if (!canInteract) return;
+    onMove(sbIdx, cellIdx);
     setHover(null);
   };
 

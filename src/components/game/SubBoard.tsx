@@ -106,7 +106,15 @@ export const SubBoard: FC<SubBoardProps> = ({
                 />
               )}
               {isHovered && hover && (
-                <div style={{ opacity: 0.35, position: 'absolute' }}>
+                <div style={{
+                  opacity: 0.35,
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  pointerEvents: 'none',
+                }}>
                   <Mark
                     player={hover.turn}
                     size="72%"
