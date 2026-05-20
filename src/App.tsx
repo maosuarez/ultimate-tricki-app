@@ -486,7 +486,8 @@ const SettingsModal: FC<SettingsModalProps> = ({ onClose }) => (
 function App() {
   const [screen, setScreen] = useState<ScreenName>('home');
   const [modal, setModal] = useState<ModalName>(null);
-  const { game, setGame } = useGameStore();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { game } = useGameStore();
   const [accentColor] = useState('#3B82F6');
   const [oColor] = useState('#EF4444');
 
@@ -508,36 +509,7 @@ function App() {
   }
 
   return (
-    <div className="app">
-      {/* Titlebar */}
-      <div className="titlebar">
-        <div className="tb-traffic">
-          <div className="tb-dot r" />
-          <div className="tb-dot y" />
-          <div className="tb-dot g" />
-        </div>
-        <div className="tb-title">Ultimate · {getScreenTitle(screen)}</div>
-        <div className="tb-right">
-          <span>v2.1.0</span>
-          <span>·</span>
-          <span className="row" style={{ gap: 4 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)' }} />
-            EU-West 24ms
-          </span>
-        </div>
-        <div className="row" style={{ gap: 4 }}>
-          <button className="btn icon ghost" style={{ width: 28, height: 28 }}>
-            <Icon name="min" size={12} />
-          </button>
-          <button className="btn icon ghost" style={{ width: 28, height: 28 }}>
-            <Icon name="max" size={11} />
-          </button>
-          <button className="btn icon ghost" style={{ width: 28, height: 28 }}>
-            <Icon name="x" size={12} />
-          </button>
-        </div>
-      </div>
-
+    <div className={`app${sidebarOpen ? '' : ' is-rail-only'}`}>
       {/* Rail */}
       <div className="rail">
         <div className="logo">U</div>
@@ -570,6 +542,13 @@ function App() {
         ))}
         <div className="spacer" />
         <button
+          className="rail-expand"
+          onClick={() => setSidebarOpen(true)}
+          title="Expandir panel"
+        >
+          <Icon name="chev-r" size={14} />
+        </button>
+        <button
           className={`rail-btn ${screen === 'settings' ? 'active' : ''}`}
           onClick={() => navigate('settings')}
           title="Configuración"
@@ -589,21 +568,19 @@ function App() {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sb-head">
-          <div
-            className="logo"
-            style={{ width: 26, height: 26, fontSize: 12, borderRadius: 7, marginBottom: 0 }}
-          >
-            U
-          </div>
-          <div>
+          <div className="sb-head-title">
             <div className="sb-title">Ultimate</div>
             <div className="t-cap" style={{ marginTop: -2 }}>
               Tic Tac Toe Pro
             </div>
           </div>
-          <div className="chev">
-            <Icon name="chev-d" size={14} />
-          </div>
+          <button
+            className="sb-toggle"
+            onClick={() => setSidebarOpen(false)}
+            title="Contraer panel"
+          >
+            <Icon name="chev-r" size={14} style={{ transform: 'rotate(180deg)' }} />
+          </button>
         </div>
 
         <div className="sb-section">
@@ -708,13 +685,10 @@ function App() {
           )}
           {screen === 'game' && (
             <ViewGame
-              game={game}
-              setGame={setGame}
               blueColor={accentColor}
               redColor={oColor}
               navigate={navigate}
               openModal={setModal}
-              viewerSide="X"
             />
           )}
           {screen === 'lobby' && (
