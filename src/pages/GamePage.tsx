@@ -1,17 +1,14 @@
 import React from 'react';
 import { Icon, Avatar } from '../components/ui';
 import { UltimateBoard, MetaBoard } from '../components/game';
-import type { GameState, Player, ScreenName, ModalName, MoveHistory } from '../types/game';
+import type { ScreenName, ModalName, MoveHistory } from '../types/game';
+import { useGameStore } from '../stores/gameStore';
 
 interface ViewGameProps {
-  game: GameState;
-  setGame: (game: GameState) => void;
   blueColor: string;
   redColor: string;
   navigate: (screen: ScreenName) => void;
-  isYourTurn?: boolean;
   openModal?: (modal: ModalName) => void;
-  viewerSide?: Player;
 }
 
 interface PlayerCardProps {
@@ -19,7 +16,7 @@ interface PlayerCardProps {
   elo: number;
   country: string;
   color: string;
-  side: Player;
+  side: 'X' | 'O';
   timeLabel: string;
   active: boolean;
   captures: number;
@@ -160,41 +157,69 @@ function moveStr(m: MoveHistory): string {
 }
 
 export function ViewGame({
-  game,
-  setGame,
   blueColor,
   redColor,
   navigate: _navigate,
-  isYourTurn: _isYourTurn,
   openModal,
-  viewerSide = 'X',
 }: ViewGameProps): React.ReactElement {
+  const { game, makeMove, playerX, playerO, chatMessages, gameWinner, addChatMessage } = useGameStore();
+
   const chatRef = React.useRef<HTMLDivElement>(null);
   const [chatMsg, setChatMsg] = React.useState('');
-  const [timeX, setTimeX] = React.useState(244);
-  const [timeO, setTimeO] = React.useState(198);
+  const [timeX, setTimeX] = React.useState(300);
+  const [timeO, setTimeO] = React.useState(300);
 
+  // Reset timers when a new game starts (history becomes empty)
   React.useEffect(() => {
+    if (game.history.length === 0) {
+      setTimeX(300);
+      setTimeO(300);
+    }
+  }, [game.history.length]);
+
+  // Tick the active player's clock — stops when game is over
+  React.useEffect(() => {
+    if (gameWinner !== null) return;
     const t = setInterval(() => {
       if (game.turn === 'X') setTimeX((s) => Math.max(0, s - 1));
       else setTimeO((s) => Math.max(0, s - 1));
     }, 1000);
     return () => clearInterval(t);
-  }, [game.turn]);
+  }, [game.turn, gameWinner]);
+
+  // Open result modal when the game ends
+  React.useEffect(() => {
+    if (gameWinner === null) return;
+    if (gameWinner === 'draw') {
+      openModal?.('draw');
+    } else {
+      openModal?.('victory');
+    }
+  }, [gameWinner, openModal]);
+
+  // Auto-scroll chat to bottom when new messages arrive
+  React.useEffect(() => {
+    if (chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
 
   const fmt = (s: number): string =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-  const events: ChatEventData[] = [
-    { t: '12:04', kind: 'sys', txt: 'Partida iniciada · Blitz 5+3' },
-    { t: '12:05', kind: 'move', txt: 'X juega 5,5 (centro)' },
-    { t: '12:07', kind: 'msg', who: 'maverick', txt: 'gl hf' },
-    { t: '12:07', kind: 'msg', who: 'tú', txt: 'gl' },
-    { t: '12:11', kind: 'event', txt: '🏆 X gana subtablero superior izquierdo' },
-    { t: '12:14', kind: 'event', txt: '🏆 O gana subtablero inferior derecho' },
-    { t: '12:16', kind: 'move', txt: 'X juega 4,5' },
-    { t: '12:17', kind: 'msg', who: 'maverick', txt: 'wow nice' },
-  ];
+  const sendChat = () => {
+    const text = chatMsg.trim();
+    if (!text) return;
+    addChatMessage({ who: 'Tú', text, timestamp: new Date().toLocaleTimeString() });
+    setChatMsg('');
+  };
+
+  const chatEvents: ChatEventData[] = chatMessages.map((m) => ({
+    kind: 'msg',
+    who: m.who,
+    txt: m.text,
+    t: m.timestamp,
+  }));
 
   const pingBars = [12,8,14,10,16,9,11,7,13,10,12,15,8,11,9,13,10,8,12,9,11];
 
@@ -205,21 +230,21 @@ export function ViewGame({
         {/* Game info */}
         <div className="card" style={{ padding: 14 }}>
           <div className="row" style={{ marginBottom: 10 }}>
-            <span className="chip blue"><Icon name="bolt" size={11}/> Blitz · 5+3</span>
+            <span className="chip blue"><Icon name="bolt" size={11}/> Local · 5+0</span>
             <div className="spacer" />
-            <span className="t-cap t-mono">#A7K-92F</span>
+            <span className="t-cap t-mono">LOCAL</span>
           </div>
-          <div className="t-tag" style={{ marginBottom: 4 }}>Sala</div>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>Ranked · EU-West</div>
+          <div className="t-tag" style={{ marginBottom: 4 }}>Modo</div>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>Local · Dos jugadores</div>
         </div>
 
         <PlayerCard
-          name="maverick" elo={1842} country="ES" color={redColor}
+          name={playerO} elo={1800} country="—" color={redColor}
           side="O" timeLabel={fmt(timeO)} active={game.turn === 'O'}
           captures={game.sb.filter((s) => s.winner === 'O').length}
         />
         <PlayerCard
-          name="tú · Lucas" elo={1814} country="MX" color={blueColor}
+          name={playerX} elo={1800} country="—" color={blueColor}
           side="X" timeLabel={fmt(timeX)} active={game.turn === 'X'}
           captures={game.sb.filter((s) => s.winner === 'X').length}
           isYou
@@ -229,9 +254,9 @@ export function ViewGame({
         <div className="card" style={{ padding: 12 }}>
           <div className="row" style={{ marginBottom: 8 }}>
             <Icon name="wifi" size={14} style={{ color: 'var(--green)' }} />
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Conexión estable</span>
+            <span style={{ fontSize: 12, fontWeight: 600 }}>Modo local</span>
             <div className="spacer" />
-            <span className="t-cap t-mono">24 ms</span>
+            <span className="t-cap t-mono">0 ms</span>
           </div>
           <div style={{ display: 'flex', gap: 2, height: 18, alignItems: 'flex-end' }}>
             {pingBars.map((h, i) => (
@@ -242,8 +267,8 @@ export function ViewGame({
             ))}
           </div>
           <div className="row" style={{ marginTop: 6 }}>
-            <span className="t-cap">Avg ping</span><div className="spacer"/>
-            <span className="t-cap t-mono">22 ms · jitter 4 ms</span>
+            <span className="t-cap">Sin latencia</span><div className="spacer"/>
+            <span className="t-cap t-mono">partida local</span>
           </div>
         </div>
 
@@ -274,7 +299,7 @@ export function ViewGame({
                 background: game.turn === 'X' ? blueColor : redColor,
                 boxShadow: `0 0 8px ${game.turn === 'X' ? blueColor : redColor}`,
               }}/>
-              {game.turn === viewerSide ? 'Tu turno' : 'Turno del oponente'}
+              {game.turn === 'X' ? `Turno de ${playerX}` : `Turno de ${playerO}`}
             </div>
             <div className="t-cap" style={{ marginTop: 2 }}>
               {game.activeSb !== null
@@ -300,10 +325,10 @@ export function ViewGame({
           }}>
             <UltimateBoard
               game={game}
-              setGame={setGame}
               blueColor={blueColor}
               redColor={redColor}
-              viewerTurn={game.turn === viewerSide}
+              canInteract={gameWinner === null}
+              onMove={makeMove}
             />
           </div>
         </div>
@@ -358,7 +383,12 @@ export function ViewGame({
             display: 'flex', flexDirection: 'column', gap: 8,
             minHeight: 0,
           }}>
-            {events.map((e, i) => (
+            {chatEvents.length === 0 && (
+              <div className="t-cap" style={{ textAlign: 'center', padding: '4px 0' }}>
+                Partida iniciada · Modo local
+              </div>
+            )}
+            {chatEvents.map((e, i) => (
               <ChatEvent key={i} ev={e} blueColor={blueColor} redColor={redColor} />
             ))}
           </div>
@@ -370,13 +400,13 @@ export function ViewGame({
           }}>
             <input
               className="input"
-              placeholder="Mensaje al oponente..."
+              placeholder="Mensaje..."
               value={chatMsg}
               onChange={(e) => setChatMsg(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') setChatMsg(''); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') sendChat(); }}
               style={{ flex: 1, padding: '7px 10px', fontSize: 12 }}
             />
-            <button className="btn icon ghost"><Icon name="send" size={14}/></button>
+            <button className="btn icon ghost" onClick={sendChat}><Icon name="send" size={14}/></button>
           </div>
         </div>
       </div>
