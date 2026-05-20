@@ -1,4 +1,4 @@
-import type { CellValue, SubBoardWinner } from '../types/game';
+import type { CellValue, SubBoardWinner, GameState } from '../types/game';
 
 const WIN_LINES: number[][] = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -15,6 +15,25 @@ export function checkWin(cells: CellValue[]): { winner: SubBoardWinner; line: nu
   }
   if (cells.every(Boolean)) return { winner: 'draw', line: null };
   return { winner: null, line: null };
+}
+
+export function checkMetaWin(winners: SubBoardWinner[]): { winner: SubBoardWinner; line: number[] | null } {
+  const cells: CellValue[] = winners.map((w) => (w === 'X' || w === 'O' ? w : null));
+  return checkWin(cells);
+}
+
+export function initGame(): GameState {
+  return {
+    sb: Array.from({ length: 9 }, () => ({
+      cells: Array(9).fill(null) as CellValue[],
+      winner: null,
+      winLine: null,
+    })),
+    turn: 'X',
+    activeSb: null,
+    lastMove: null,
+    history: [],
+  };
 }
 
 export function buildSampleGame() {
