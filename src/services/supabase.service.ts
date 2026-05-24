@@ -131,14 +131,27 @@ export const supabaseService = {
         });
         if (error) throwAs(error);
         if (!data.session) throwAs({ code: 'NO_SESSION', message: 'No session returned after sign-up' });
+
+        // The handle_new_user trigger creates the profile using the email prefix as username.
+        // We overwrite it here with the username chosen in the form.
+        await client
+          .from('profiles')
+          .update({ username })
+          .eq('id', data.session.user.id);
+
         return sessionToAuthSession(data.session);
       } catch (err) {
         throwAs(err);
       }
     },
 
-    async signIn(email: string, password: string): Promise<AuthSession> {
+    async signIn(email: string, password: string, rememberMe: boolean = true): Promise<AuthSession> {
       try {
+        if (rememberMe) {
+          localStorage.removeItem('tricki_no_remember');
+        } else {
+          localStorage.setItem('tricki_no_remember', '1');
+        }
         const { data, error } = await client.auth.signInWithPassword({ email, password });
         if (error) throwAs(error);
         if (!data.session) throwAs({ code: 'NO_SESSION', message: 'No session returned after sign-in' });
@@ -230,6 +243,15 @@ export const supabaseService = {
       } catch (err) {
         throwAs(err);
       }
+    },
+
+    async checkUsernameAvailable(username: string): Promise<boolean> {
+      const { data } = await client
+        .from('profiles')
+        .select('id')
+        .eq('username', username)
+        .maybeSingle();
+      return data === null;
     },
   },
 
