@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icon, Kbd } from '../components/ui';
 import type { ScreenName } from '../types/game';
+import { useGameStore } from '../stores/gameStore';
 
 interface ViewCreateProps {
   navigate: (screen: ScreenName) => void;
@@ -95,6 +96,16 @@ export function ViewCreate({ navigate, blueColor: _blueColor }: ViewCreateProps)
   const [diff, setDiff] = React.useState<AIDiff>('hard');
   const [time, setTime] = React.useState<TimeControl>('blitz');
   const [privacy, setPrivacy] = React.useState<Privacy>('public');
+  const startLocalGame = useGameStore((s) => s.startLocalGame);
+
+  const handleCreate = () => {
+    if (mode === 'local') {
+      startLocalGame('Jugador 1', 'Jugador 2');
+      navigate('game');
+    } else {
+      navigate('lobby');
+    }
+  };
 
   const modeLabel = mode === 'online' ? 'Online · Ranked' : mode === 'ai' ? 'vs IA' : mode === 'local' ? 'Local' : 'Privada';
   const diffLabel = diff === 'easy' ? 'Fácil' : diff === 'med' ? 'Medio' : diff === 'hard' ? 'Difícil' : 'Experto';
@@ -175,8 +186,8 @@ export function ViewCreate({ navigate, blueColor: _blueColor }: ViewCreateProps)
               <SummaryRow k="ELO impactado" v={mode === 'online' ? 'Sí, ±18' : 'No'} />
               <SummaryRow k="Espectadores" v="Permitidos" />
             </div>
-            <button className="btn primary lg" style={{ width: '100%', marginBottom: 8 }} onClick={() => navigate('lobby')}>
-              <Icon name="play" size={14}/> Crear y abrir lobby
+            <button className="btn primary lg" style={{ width: '100%', marginBottom: 8 }} onClick={handleCreate}>
+              <Icon name="play" size={14}/> {mode === 'local' ? 'Iniciar partida local' : 'Crear y abrir lobby'}
             </button>
             <button className="btn ghost" style={{ width: '100%' }}>Guardar como plantilla</button>
           </div>
