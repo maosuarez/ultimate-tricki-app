@@ -15,6 +15,7 @@ interface GameStore {
   playerO: string;
   chatMessages: ChatMessage[];
   gameWinner: Player | 'draw' | null;
+  isActive: boolean;
   setGame: (game: GameState) => void;
   resetGame: () => void;
   makeMove: (sb: number, cell: number) => void;
@@ -30,10 +31,11 @@ export const useGameStore = create<GameStore>()(
       playerO: 'Jugador O',
       chatMessages: [],
       gameWinner: null,
+      isActive: false,
 
       setGame: (game) => set({ game }),
 
-      resetGame: () => set({ game: initGame(), gameWinner: null, chatMessages: [] }),
+      resetGame: () => set({ game: initGame(), gameWinner: null, chatMessages: [], isActive: false }),
 
       makeMove: (sb, cell) => {
         const { game } = get();
@@ -101,6 +103,7 @@ export const useGameStore = create<GameStore>()(
           playerO: nameO,
           chatMessages: [],
           gameWinner: null,
+          isActive: true,
         }),
     }),
     { name: 'GameStore' }
