@@ -5,38 +5,81 @@
 
 -- ─── auth.users stubs ────────────────────────────────────────────────────────
 -- In local dev, Supabase Auth handles the auth.users table.
--- Insert directly only when you need reproducible test users without going
--- through the signup flow. Passwords are bcrypt hashes of "Password123!".
+-- Passwords use regexp_replace to produce $2b$ prefix required by GoTrue cloud.
+-- pgcrypto's crypt() generates $2a$; GoTrue expects $2b$. For ASCII passwords the
+-- hash body is identical — only the version marker differs.
+-- Plain-text password for all test users: Password123!
 
 INSERT INTO auth.users (
-  id, email, encrypted_password, email_confirmed_at,
+  id, instance_id, email, encrypted_password, email_confirmed_at,
   created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
-  aud, role
+  aud, role,
+  confirmation_token, recovery_token, email_change_token_new,
+  email_change, email_change_token_current, phone_change,
+  phone_change_token, reauthentication_token
 )
 VALUES
   (
     'a0000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000000',
     'alice@example.com',
-    '$2a$10$PzUIEL/U3mVzrPhsajhY8.H0kFBf1VB9CroGwGR.e3OjS5LO7G7vO',
+    regexp_replace(crypt('Password123!', gen_salt('bf', 10)), '^\$2a\$', '$2b$'),
     now(), now(), now(),
     '{"provider":"email","providers":["email"]}', '{}',
-    'authenticated', 'authenticated'
+    'authenticated', 'authenticated',
+    '', '', '', '', '', '', '', ''
   ),
   (
     'a0000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000000',
     'bob@example.com',
-    '$2a$10$PzUIEL/U3mVzrPhsajhY8.H0kFBf1VB9CroGwGR.e3OjS5LO7G7vO',
+    regexp_replace(crypt('Password123!', gen_salt('bf', 10)), '^\$2a\$', '$2b$'),
     now(), now(), now(),
     '{"provider":"email","providers":["email"]}', '{}',
-    'authenticated', 'authenticated'
+    'authenticated', 'authenticated',
+    '', '', '', '', '', '', '', ''
   ),
   (
     'a0000000-0000-0000-0000-000000000003',
+    '00000000-0000-0000-0000-000000000000',
     'charlie@example.com',
-    '$2a$10$PzUIEL/U3mVzrPhsajhY8.H0kFBf1VB9CroGwGR.e3OjS5LO7G7vO',
+    regexp_replace(crypt('Password123!', gen_salt('bf', 10)), '^\$2a\$', '$2b$'),
     now(), now(), now(),
     '{"provider":"email","providers":["email"]}', '{}',
-    'authenticated', 'authenticated'
+    'authenticated', 'authenticated',
+    '', '', '', '', '', '', '', ''
+  )
+ON CONFLICT (id) DO NOTHING;
+
+-- ─── auth.identities stubs ────────────────────────────────────────────────────
+-- Required by GoTrue to validate email/password login. provider_id = email for
+-- the "email" provider. The `email` column is generated — never include it.
+
+INSERT INTO auth.identities (id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
+VALUES
+  (
+    'a0000000-0000-0000-0000-000000000001',
+    'a0000000-0000-0000-0000-000000000001',
+    'alice@example.com',
+    'email',
+    '{"sub":"a0000000-0000-0000-0000-000000000001","email":"alice@example.com","email_verified":true,"provider":"email"}',
+    now(), now(), now()
+  ),
+  (
+    'a0000000-0000-0000-0000-000000000002',
+    'a0000000-0000-0000-0000-000000000002',
+    'bob@example.com',
+    'email',
+    '{"sub":"a0000000-0000-0000-0000-000000000002","email":"bob@example.com","email_verified":true,"provider":"email"}',
+    now(), now(), now()
+  ),
+  (
+    'a0000000-0000-0000-0000-000000000003',
+    'a0000000-0000-0000-0000-000000000003',
+    'charlie@example.com',
+    'email',
+    '{"sub":"a0000000-0000-0000-0000-000000000003","email":"charlie@example.com","email_verified":true,"provider":"email"}',
+    now(), now(), now()
   )
 ON CONFLICT (id) DO NOTHING;
 
