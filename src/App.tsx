@@ -1,6 +1,8 @@
 import { useState, useEffect, type FC } from 'react';
 import { Icon, Avatar, Kbd, ProgressBar } from './components/ui';
 import { useGameStore } from './stores/gameStore';
+import { useUserStore } from './stores/userStore';
+import { useCurrentUser } from './hooks/useCurrentUser';
 import type { ScreenName, ModalName, Player } from './types/game';
 import { ViewDashboard } from './pages/HomePage';
 import { ViewGame } from './pages/GamePage';
@@ -491,6 +493,9 @@ function App() {
   const [accentColor] = useState('#3B82F6');
   const [oColor] = useState('#EF4444');
 
+  const { authChecked, session, isGuest, guestName } = useCurrentUser();
+  const { profile, signIn, signUp, enterAsGuest, signOut } = useUserStore();
+
   useEffect(() => {
     document.documentElement.style.setProperty('--blue', accentColor);
     document.documentElement.style.setProperty('--red', oColor);
@@ -500,157 +505,177 @@ function App() {
 
   const showTabs = screen === 'home' || screen === 'profile' || screen === 'history';
 
-  if (screen === 'login') {
+  // Show splash while verifying session
+  if (!authChecked) {
     return (
-      <div className="app is-fullscreen">
-        <ViewLogin navigate={navigate} blueColor={accentColor} />
+      <div className="app is-fullscreen" style={{ display: 'grid', placeItems: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: 12,
+            background: 'linear-gradient(140deg,#3B82F6,#8B5CF6)',
+            display: 'grid', placeItems: 'center',
+            boxShadow: '0 4px 20px rgba(59,130,246,.4)',
+          }}>
+            <span style={{ fontWeight: 800, color: '#fff', fontSize: 22 }}>U</span>
+          </div>
+          <div className="t-cap">Verificando sesion...</div>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className={`app${sidebarOpen ? '' : ' is-rail-only'}`}>
-      {/* Rail */}
-      <div className="rail">
-        <div className="logo">U</div>
-        <div className="sep" />
-        {NAV.slice(0, 5).map((n) => (
-          <button
-            key={n.k}
-            onClick={() => navigate(n.screen as ScreenName)}
-            className={`rail-btn ${screen === n.screen ? 'active' : ''}`}
-            title={n.label}
-          >
-            <Icon name={n.icon} size={18} />
-            {'live' in n && n.live && screen !== n.screen && (
-              <div className="badge" style={{ background: 'var(--green)' }}>
-                •
-              </div>
-            )}
-          </button>
-        ))}
-        <div className="sep" />
-        {NAV.slice(5).map((n) => (
-          <button
-            key={n.k}
-            onClick={() => navigate(n.screen as ScreenName)}
-            className={`rail-btn ${screen === n.screen ? 'active' : ''}`}
-            title={n.label}
-          >
-            <Icon name={n.icon} size={18} />
-          </button>
-        ))}
-        <div className="spacer" />
-        <button
-          className="rail-expand"
-          onClick={() => setSidebarOpen(true)}
-          title="Expandir panel"
-        >
-          <Icon name="chev-r" size={14} />
-        </button>
-        <button
-          className={`rail-btn ${screen === 'settings' ? 'active' : ''}`}
-          onClick={() => navigate('settings')}
-          title="Configuración"
-        >
-          <Icon name="settings" size={18} />
-        </button>
-        <button className="rail-btn" onClick={() => navigate('login')} title="Cerrar sesión">
-          <Avatar
-            name="Lucas H."
-            size={28}
-            gradient="linear-gradient(140deg,#F59E0B,#EF4444)"
-            status="online"
-          />
-        </button>
-      </div>
+  const isAuthenticated = !!session || isGuest;
 
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sb-head">
-          <div className="sb-head-title">
-            <div className="sb-title">Ultimate</div>
-            <div className="t-cap" style={{ marginTop: -2 }}>
-              Tic Tac Toe Pro
-            </div>
-          </div>
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="app is-fullscreen">
+        <ViewLogin
+          navigate={navigate}
+          blueColor={accentColor}
+          onSignIn={async (email, password, rememberMe) => {
+            await signIn(email, password, rememberMe);
+            navigate('home');
+          }}
+          onSignUp={async (email, password, username) => {
+            await signUp(email, password, username);
+            navigate('home');
+          }}
+          onGuest={(name) => {
+            enterAsGuest(name);
+            navigate('home');
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Nav-footer dynamic values
+  const displayInitial = isGuest ? (guestName?.[0] ?? 'G') : (profile?.displayName?.[0] ?? '?');
+  const displayName = isGuest ? (guestName ?? 'Invitado') : (profile?.displayName ?? '...');
+  const eloLine = isGuest ? 'Modo invitado' : (profile ? `${profile.rating} · ELO` : '...');
+
+  return (
+    <div className={`app${sidebarOpen ? '' : ' is-collapsed'}`}>
+      {/* Nav panel */}
+      <nav className="nav-panel">
+        {/* Header */}
+        <div className="nav-head">
           <button
-            className="sb-toggle"
-            onClick={() => setSidebarOpen(false)}
-            title="Contraer panel"
+            className="nav-toggle"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            title={sidebarOpen ? 'Contraer panel' : 'Expandir panel'}
           >
-            <Icon name="chev-r" size={14} style={{ transform: 'rotate(180deg)' }} />
+            <Icon name="sidebar" size={18} />
           </button>
+          {sidebarOpen && (
+            <div className="nav-brand">
+              <span className="nav-brand-title">Ultimate</span>
+              <span className="nav-brand-sub">Tic Tac Toe</span>
+            </div>
+          )}
         </div>
 
-        <div className="sb-section">
-          <div className="sb-label">Juego</div>
-          {NAV.map((n) => (
-            <div
+        <div className="nav-sep" />
+
+        {/* Primary nav */}
+        <div className="nav-section">
+          {sidebarOpen && <div className="nav-label">Juego</div>}
+          {NAV.slice(0, 5).map((n) => (
+            <button
               key={n.k}
               onClick={() => navigate(n.screen as ScreenName)}
-              className={`sb-item ${screen === n.screen ? 'active' : ''}`}
+              className={`nav-item ${screen === n.screen ? 'active' : ''}`}
+              title={n.label}
             >
-              <Icon name={n.icon} size={15} className="sb-icon" />
-              <span>{n.label}</span>
-              {'live' in n && n.live && <span className="live-dot" />}
-              {'count' in n && n.count !== undefined && (
-                <span className="sb-count">{n.count}</span>
-              )}
-            </div>
+              <Icon name={n.icon} size={16} className="nav-icon" />
+              <span className="nav-text">{n.label}</span>
+              {'live' in n && n.live && screen !== n.screen && <span className="live-dot" />}
+              {'count' in n && n.count !== undefined && <span className="nav-count">{n.count}</span>}
+            </button>
           ))}
         </div>
 
-        <div className="sb-section">
-          <div className="sb-label">Tu cuenta</div>
+        <div className="nav-sep" />
+
+        {/* Secondary nav */}
+        <div className="nav-section">
+          {sidebarOpen && <div className="nav-label">Tu cuenta</div>}
           {NAV_SUB.map((n) => (
-            <div key={n.k} className="sb-item">
-              <Icon name={n.icon} size={15} className="sb-icon" />
-              <span>{n.label}</span>
-              {'count' in n && n.count !== undefined && (
-                <span className="sb-count">{n.count}</span>
-              )}
-              {'sub' in n && n.sub && <span className="sb-count">{n.sub}</span>}
-            </div>
+            <button key={n.k} className="nav-item" title={n.label}>
+              <Icon name={n.icon} size={16} className="nav-icon" />
+              <span className="nav-text">{n.label}</span>
+              {'count' in n && n.count !== undefined && <span className="nav-count">{n.count}</span>}
+              {'sub' in n && n.sub && <span className="nav-count">{n.sub}</span>}
+            </button>
           ))}
         </div>
 
-        <div className="sb-section">
-          <div className="sb-label">
-            <span>Amigos</span>
-            <Icon name="plus" size={12} />
-          </div>
-          {(
-            [
-              { n: 'maverick', s: 'online', st: 'En partida' },
-              { n: 'somnia', s: 'online', st: 'Disponible' },
-              { n: 'noahz', s: 'online', st: 'En menú' },
-              { n: 'baltz', s: 'away', st: 'Ausente' },
-            ] as const
-          ).map((f) => (
-            <div key={f.n} className="sb-item" style={{ padding: '6px 10px' }}>
-              <Avatar name={f.n} size={22} status={f.s} />
-              <div style={{ minWidth: 0, lineHeight: 1.2 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600 }}>{f.n}</div>
-                <div className="t-cap" style={{ fontSize: 10.5 }}>
-                  {f.st}
+        {/* Friends section — only when expanded */}
+        {sidebarOpen && (
+          <div className="nav-section">
+            <div className="nav-label">
+              <span>Amigos</span>
+              <Icon name="plus" size={12} />
+            </div>
+            {(
+              [
+                { n: 'maverick', s: 'online', st: 'En partida' },
+                { n: 'somnia', s: 'online', st: 'Disponible' },
+                { n: 'noahz', s: 'online', st: 'En menú' },
+                { n: 'baltz', s: 'away', st: 'Ausente' },
+              ] as const
+            ).map((f) => (
+              <div key={f.n} className="nav-item" style={{ padding: '6px 10px' }}>
+                <Avatar name={f.n} size={22} status={f.s} />
+                <div style={{ minWidth: 0, lineHeight: 1.2 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600 }}>{f.n}</div>
+                  <div className="t-cap" style={{ fontSize: 10.5 }}>{f.st}</div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="sb-foot">
-          <div className="av">L</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="nm">Lucas H.</div>
-            <div className="el">1814 · Diamante II</div>
+            ))}
           </div>
-          <button className="btn icon ghost" onClick={() => navigate('settings')}>
-            <Icon name="settings" size={14} />
+        )}
+
+        <div className="nav-spacer" />
+
+        {/* Bottom items — only in collapsed state */}
+        {!sidebarOpen && (
+          <button
+            className={`nav-item ${screen === 'settings' ? 'active' : ''}`}
+            onClick={() => navigate('settings')}
+            title="Configuración"
+          >
+            <Icon name="settings" size={16} className="nav-icon" />
+            <span className="nav-text">Configuración</span>
           </button>
+        )}
+
+        {/* Footer */}
+        <div className="nav-footer">
+          <div className="nav-avatar">{displayInitial}</div>
+          {sidebarOpen && (
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="nm">{displayName}</div>
+              <div className="el">{eloLine}</div>
+            </div>
+          )}
+          {sidebarOpen && (
+            <>
+              <button className="btn icon ghost" onClick={() => navigate('settings')}>
+                <Icon name="settings" size={14} />
+              </button>
+              <button
+                className="btn icon ghost"
+                onClick={() => { void signOut(); navigate('login'); }}
+                title="Cerrar sesion"
+              >
+                <Icon name="arrow-r" size={14} />
+              </button>
+            </>
+          )}
         </div>
-      </aside>
+      </nav>
 
       {/* Main */}
       <main className="main">
