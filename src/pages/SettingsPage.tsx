@@ -338,13 +338,9 @@ export function ViewSettings({ navigate: _navigate, blueColor }: ViewSettingsPro
           <div
             key={s.k}
             onClick={() => setSection(s.k)}
-            className="sb-item"
-            style={{
-              background: section === s.k ? 'var(--card-hi)' : 'transparent',
-              color: section === s.k ? 'var(--text)' : 'var(--text-2)',
-            }}
+            className={`nav-item ${section === s.k ? 'active' : ''}`}
           >
-            <Icon name={s.icon} size={15} />
+            <Icon name={s.icon} size={15} className="nav-icon" />
             <span>{s.label}</span>
           </div>
         ))}

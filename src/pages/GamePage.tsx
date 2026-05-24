@@ -159,15 +159,16 @@ function moveStr(m: MoveHistory): string {
 export function ViewGame({
   blueColor,
   redColor,
-  navigate: _navigate,
+  navigate,
   openModal,
 }: ViewGameProps): React.ReactElement {
-  const { game, makeMove, playerX, playerO, chatMessages, gameWinner, addChatMessage } = useGameStore();
+  const { game, makeMove, playerX, playerO, chatMessages, gameWinner, addChatMessage, isActive } = useGameStore();
 
   const chatRef = React.useRef<HTMLDivElement>(null);
   const [chatMsg, setChatMsg] = React.useState('');
   const [timeX, setTimeX] = React.useState(300);
   const [timeO, setTimeO] = React.useState(300);
+  const [activeTab, setActiveTab] = React.useState<'Eventos' | 'Movimientos' | 'Chat'>('Movimientos');
 
   // Reset timers when a new game starts (history becomes empty)
   React.useEffect(() => {
@@ -203,6 +204,28 @@ export function ViewGame({
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
     }
   }, [chatMessages]);
+
+  if (!isActive) {
+    return (
+      <div className="fade-in game-grid" style={{ gap: 14, padding: 14, height: '100%', overflow: 'hidden' }}>
+        <div />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
+          <div className="card" style={{ padding: 40, textAlign: 'center', maxWidth: 380 }}>
+            <Icon name="grid" size={48} style={{ color: 'var(--text-3)', marginBottom: 16 }} />
+            <div className="t-h2" style={{ marginBottom: 8 }}>No hay partida activa</div>
+            <div className="t-cap" style={{ marginBottom: 24 }}>
+              Crea una nueva partida o únete a una existente para empezar a jugar.
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button className="btn primary" onClick={() => navigate('create')}>Crear partida</button>
+              <button className="btn ghost" onClick={() => navigate('join')}>Unirse</button>
+            </div>
+          </div>
+        </div>
+        <div />
+      </div>
+    );
+  }
 
   const fmt = (s: number): string =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -309,10 +332,6 @@ export function ViewGame({
           </div>
           <div className="spacer" />
           <button className="btn ghost sm" onClick={() => openModal?.('settings')}><Icon name="settings" size={14}/></button>
-          <button className="btn ghost sm" onClick={() => openModal?.('victory')}>Test: Victoria</button>
-          <button className="btn ghost sm" onClick={() => openModal?.('defeat')}>Derrota</button>
-          <button className="btn ghost sm" onClick={() => openModal?.('draw')}>Empate</button>
-          <button className="btn ghost sm" onClick={() => openModal?.('reconnect')}><Icon name="wifi" size={14}/></button>
           <button className="btn danger sm" onClick={() => openModal?.('flag')}><Icon name="flag" size={13}/> Abandonar</button>
         </div>
 
@@ -338,76 +357,104 @@ export function ViewGame({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
         {/* Tabs */}
         <div className="card" style={{ padding: 4, display: 'flex', gap: 2 }}>
-          {(['Eventos', 'Movimientos', 'Chat'] as const).map((t, i) => (
-            <div key={t} style={{
+          {(['Eventos', 'Movimientos', 'Chat'] as const).map((t) => (
+            <div key={t} onClick={() => setActiveTab(t)} style={{
               flex: 1, padding: '7px 0', textAlign: 'center',
               fontSize: 12, fontWeight: 600,
               borderRadius: 6,
-              background: i === 0 ? 'var(--card-hi)' : 'transparent',
-              color: i === 0 ? 'var(--text)' : 'var(--text-3)',
-              cursor: 'default',
+              background: activeTab === t ? 'var(--card-hi)' : 'transparent',
+              color: activeTab === t ? 'var(--text)' : 'var(--text-3)',
+              cursor: 'pointer',
             }}>{t}</div>
           ))}
         </div>
 
-        {/* Move history */}
-        <div className="card" style={{ padding: 14, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div className="row" style={{ marginBottom: 10 }}>
-            <div className="t-tag">Movimientos · {game.history.length}</div>
-            <div className="spacer" />
-            <span className="chip">turno {game.history.length}</span>
-          </div>
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'auto 1fr 1fr',
-            rowGap: 3, fontSize: 12, fontFamily: 'var(--font-mono)',
-            maxHeight: 180, overflow: 'auto', paddingRight: 4,
-          }}>
-            {pairMoves(game.history).map((pair, i) => (
-              <React.Fragment key={i}>
-                <div style={{ color: 'var(--text-3)', padding: '2px 8px 2px 0' }}>{pair.n}.</div>
-                <div style={{ color: blueColor, padding: '2px 8px' }}>
-                  {pair.X ? moveStr(pair.X) : '—'}
-                </div>
-                <div style={{ color: redColor, padding: '2px 8px' }}>
-                  {pair.O ? moveStr(pair.O) : '—'}
-                </div>
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-
-        {/* Events feed + chat */}
+        {/* Tab content */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          <div ref={chatRef} style={{
-            flex: 1, overflow: 'auto', padding: 14,
-            display: 'flex', flexDirection: 'column', gap: 8,
-            minHeight: 0,
-          }}>
-            {chatEvents.length === 0 && (
-              <div className="t-cap" style={{ textAlign: 'center', padding: '4px 0' }}>
-                Partida iniciada · Modo local
+          {activeTab === 'Movimientos' && (
+            <>
+              <div className="row" style={{ padding: '10px 14px 8px', borderBottom: '1px solid var(--border)' }}>
+                <div className="t-tag">Movimientos · {game.history.length}</div>
+                <div className="spacer" />
+                <span className="chip">turno {game.history.length}</span>
               </div>
-            )}
-            {chatEvents.map((e, i) => (
-              <ChatEvent key={i} ev={e} blueColor={blueColor} redColor={redColor} />
-            ))}
-          </div>
-          {/* Chat input */}
-          <div style={{
-            borderTop: '1px solid var(--border)',
-            padding: 10,
-            display: 'flex', gap: 6, alignItems: 'center',
-          }}>
-            <input
-              className="input"
-              placeholder="Mensaje..."
-              value={chatMsg}
-              onChange={(e) => setChatMsg(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') sendChat(); }}
-              style={{ flex: 1, padding: '7px 10px', fontSize: 12 }}
-            />
-            <button className="btn icon ghost" onClick={sendChat}><Icon name="send" size={14}/></button>
-          </div>
+              <div style={{
+                flex: 1, overflow: 'auto', padding: '10px 14px',
+                display: 'grid', gridTemplateColumns: 'auto 1fr 1fr',
+                rowGap: 3, fontSize: 12, fontFamily: 'var(--font-mono)',
+                alignContent: 'start',
+              }}>
+                {pairMoves(game.history).map((pair, i) => (
+                  <React.Fragment key={i}>
+                    <div style={{ color: 'var(--text-3)', padding: '2px 8px 2px 0' }}>{pair.n}.</div>
+                    <div style={{ color: blueColor, padding: '2px 8px' }}>
+                      {pair.X ? moveStr(pair.X) : '—'}
+                    </div>
+                    <div style={{ color: redColor, padding: '2px 8px' }}>
+                      {pair.O ? moveStr(pair.O) : '—'}
+                    </div>
+                  </React.Fragment>
+                ))}
+              </div>
+            </>
+          )}
+
+          {activeTab === 'Eventos' && (
+            <div ref={chatRef} style={{
+              flex: 1, overflow: 'auto', padding: 14,
+              display: 'flex', flexDirection: 'column', gap: 8,
+              minHeight: 0,
+            }}>
+              {chatEvents.filter((e) => e.kind === 'sys' || e.kind === 'event').length === 0 ? (
+                <div className="t-cap" style={{ textAlign: 'center', padding: '4px 0' }}>
+                  Partida iniciada · Modo local
+                </div>
+              ) : (
+                chatEvents
+                  .filter((e) => e.kind === 'sys' || e.kind === 'event')
+                  .map((e, i) => (
+                    <ChatEvent key={i} ev={e} blueColor={blueColor} redColor={redColor} />
+                  ))
+              )}
+            </div>
+          )}
+
+          {activeTab === 'Chat' && (
+            <>
+              <div ref={chatRef} style={{
+                flex: 1, overflow: 'auto', padding: 14,
+                display: 'flex', flexDirection: 'column', gap: 8,
+                minHeight: 0,
+              }}>
+                {chatEvents.filter((e) => e.kind === 'msg').length === 0 ? (
+                  <div className="t-cap" style={{ textAlign: 'center', padding: '4px 0' }}>
+                    Sin mensajes aún.
+                  </div>
+                ) : (
+                  chatEvents
+                    .filter((e) => e.kind === 'msg')
+                    .map((e, i) => (
+                      <ChatEvent key={i} ev={e} blueColor={blueColor} redColor={redColor} />
+                    ))
+                )}
+              </div>
+              <div style={{
+                borderTop: '1px solid var(--border)',
+                padding: 10,
+                display: 'flex', gap: 6, alignItems: 'center',
+              }}>
+                <input
+                  className="input"
+                  placeholder="Mensaje..."
+                  value={chatMsg}
+                  onChange={(e) => setChatMsg(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') sendChat(); }}
+                  style={{ flex: 1, padding: '7px 10px', fontSize: 12 }}
+                />
+                <button className="btn icon ghost" onClick={sendChat}><Icon name="send" size={14}/></button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
