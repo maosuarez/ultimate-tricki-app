@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon, Avatar, Stat, ProgressBar } from '../components/ui';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import type { ScreenName } from '../types/game';
 
 interface ViewProfileProps {
@@ -100,6 +101,20 @@ const FRIENDS: Friend[] = [
 ];
 
 export function ViewProfile({ navigate, blueColor, redColor }: ViewProfileProps): React.ReactElement {
+  const { profile, stats } = useCurrentUser();
+
+  const displayName   = profile?.displayName ?? 'Jugador';
+  const username      = profile?.username ?? '';
+  const ratingValue   = profile ? String(profile.rating) : '—';
+  const totalMatches  = stats ? String(stats.totalMatches) : '—';
+  const winrate       = stats && stats.totalMatches > 0
+    ? Math.round((stats.wins / stats.totalMatches) * 100)
+    : 0;
+  const winrateSub    = stats
+    ? `${stats.wins} V · ${stats.losses} D · ${stats.draws} E`
+    : '— V · — D · — E';
+  const streakValue   = stats ? String(stats.winStreak) : '—';
+
   return (
     <div className="fade-in" style={{ padding: 28, overflow: 'auto', height: '100%' }}>
       {/* Header */}
@@ -109,11 +124,11 @@ export function ViewProfile({ navigate, blueColor, redColor }: ViewProfileProps)
       }}>
         <div style={{ height: 80, background: 'linear-gradient(120deg, rgba(59,130,246,.18), rgba(139,92,246,.18))' }}/>
         <div style={{ padding: '0 22px 20px', display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 18, alignItems: 'flex-end', marginTop: -28 }}>
-          <Avatar name="Lucas H." size={96} square gradient="linear-gradient(140deg, #F59E0B, #EF4444)" status="online" />
+          <Avatar name={displayName} size={96} square gradient="linear-gradient(140deg, #F59E0B, #EF4444)" status="online" />
           <div style={{ paddingBottom: 6 }}>
             <div className="row" style={{ gap: 8 }}>
-              <div className="t-h1">Lucas H.</div>
-              <span className="chip blue">@lucas</span>
+              <div className="t-h1">{displayName}</div>
+              {username ? <span className="chip blue">@{username}</span> : null}
               <span className="chip"><Icon name="medal" size={11}/> Cazador veterano</span>
             </div>
             <div className="row" style={{ gap: 14, marginTop: 6, color: 'var(--text-2)', fontSize: 12 }}>
@@ -135,10 +150,10 @@ export function ViewProfile({ navigate, blueColor, redColor }: ViewProfileProps)
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-            <Stat label="ELO" value="1 814" sub="Diamante II" accent={blueColor} />
-            <Stat label="Partidas" value="447" sub="esta temporada" />
-            <Stat label="Winrate" value="64%" sub="284 V · 142 D · 21 E" accent="var(--green)" />
-            <Stat label="Racha" value="6" sub="actual" accent="var(--amber)" />
+            <Stat label="ELO"      value={ratingValue}         sub="rating actual"    accent={blueColor} />
+            <Stat label="Partidas" value={totalMatches}         sub="esta temporada" />
+            <Stat label="Winrate"  value={`${winrate}%`}        sub={winrateSub}       accent="var(--green)" />
+            <Stat label="Racha"    value={streakValue}          sub="actual"           accent="var(--amber)" />
           </div>
 
           {/* ELO graph */}
