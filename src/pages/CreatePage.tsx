@@ -13,6 +13,17 @@ type AIDiff = 'easy' | 'med' | 'hard' | 'expert';
 type TimeControl = 'none' | 'blitz' | 'rapid' | 'custom';
 type Privacy = 'public' | 'private';
 
+type GameTemplate = {
+  id: string;
+  name: string;
+  mode: GameMode;
+  diff: AIDiff;
+  time: TimeControl;
+  customMinutes?: number;
+  customIncrement?: number;
+  createdAt: number;
+};
+
 interface SectionProps {
   title: string;
   step: number;
@@ -31,6 +42,22 @@ interface Card2Props {
 interface SummaryRowProps {
   k: string;
   v: string;
+}
+
+const TEMPLATES_KEY = 'tricki_templates';
+
+function loadTemplates(): GameTemplate[] {
+  try {
+    const raw = localStorage.getItem(TEMPLATES_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as GameTemplate[];
+  } catch {
+    return [];
+  }
+}
+
+function saveTemplates(templates: GameTemplate[]): void {
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
 }
 
 function Section({ title, step, children }: SectionProps): React.ReactElement {
@@ -73,7 +100,7 @@ function Card2({ active, onClick, icon, title, desc, badge }: Card2Props): React
       {badge && (
         <span className="chip blue" style={{ position: 'absolute', top: 10, right: 10, fontSize: 9, padding: '1px 6px' }}>{badge}</span>
       )}
-      {active && (
+      {active && !badge && (
         <div style={{ position: 'absolute', top: 10, right: 10, width: 16, height: 16, borderRadius: '50%', background: 'var(--blue)', display: 'grid', placeItems: 'center' }}>
           <Icon name="check" size={11} style={{ color: '#fff' }} />
         </div>
@@ -92,18 +119,56 @@ function SummaryRow({ k, v }: SummaryRowProps): React.ReactElement {
 }
 
 export function ViewCreate({ navigate, blueColor: _blueColor }: ViewCreateProps): React.ReactElement {
-  const [mode, setMode] = React.useState<GameMode>('online');
+  const [mode, setMode] = React.useState<GameMode>('local');
   const [diff, setDiff] = React.useState<AIDiff>('hard');
   const [time, setTime] = React.useState<TimeControl>('blitz');
-  const [privacy, setPrivacy] = React.useState<Privacy>('public');
+  const [_privacy, setPrivacy] = React.useState<Privacy>('public');
+  const [templateSaved, setTemplateSaved] = React.useState(false);
+  const [templates, setTemplates] = React.useState<GameTemplate[]>(() => loadTemplates());
   const startLocalGame = useGameStore((s) => s.startLocalGame);
+  const startAiGame = useGameStore((s) => s.startAiGame);
+
+  // Sync privacy automatically based on mode — no user choice needed
+  React.useEffect(() => {
+    if (mode === 'private') setPrivacy('private');
+    else setPrivacy('public');
+  }, [mode]);
+
+  // When switching to AI mode, force difficulty to 'easy' (only available agent)
+  React.useEffect(() => {
+    if (mode === 'ai') setDiff('easy');
+  }, [mode]);
+
+  // Keyboard shortcuts
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        handleCreate();
+      } else if (e.key === 'Escape') {
+        navigate('home');
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  // handleCreate is stable per render — navigate is a prop, mode is state
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, time, diff]);
+
+  function timeToSeconds(t: TimeControl): number {
+    if (t === 'none') return 9999;
+    if (t === 'blitz') return 300;
+    if (t === 'rapid') return 600;
+    return 420;
+  }
 
   const handleCreate = () => {
+    const secs = timeToSeconds(time);
     if (mode === 'local') {
-      startLocalGame('Jugador 1', 'Jugador 2');
+      startLocalGame('Jugador 1', 'Jugador 2', secs);
       navigate('game');
-    } else {
-      navigate('lobby');
+    } else if (mode === 'ai') {
+      startAiGame('Jugador 1', 'builtin.flat_mc.easy', secs);
+      navigate('game');
     }
   };
 
@@ -111,12 +176,44 @@ export function ViewCreate({ navigate, blueColor: _blueColor }: ViewCreateProps)
   const diffLabel = diff === 'easy' ? 'Fácil' : diff === 'med' ? 'Medio' : diff === 'hard' ? 'Difícil' : 'Experto';
   const timeLabel = time === 'blitz' ? '5+3' : time === 'rapid' ? '10+5' : time === 'none' ? 'sin límite' : '7+4';
 
+  const isDisabled = mode === 'online' || mode === 'private';
+  const timeStep = mode === 'ai' ? 3 : 2;
+
+  const handleSaveTemplate = () => {
+    const name = `${modeLabel} · ${timeLabel}`;
+    const newTemplate: GameTemplate = {
+      id: Date.now().toString(),
+      name,
+      mode,
+      diff,
+      time,
+      createdAt: Date.now(),
+    };
+    const existing = loadTemplates();
+    const updated = [...existing, newTemplate];
+    saveTemplates(updated);
+    setTemplates(updated);
+    setTemplateSaved(true);
+    setTimeout(() => setTemplateSaved(false), 1500);
+  };
+
+  const handleApplyTemplate = (t: GameTemplate) => {
+    setMode(t.mode);
+    setDiff(t.diff);
+    setTime(t.time);
+    // privacy syncs via useEffect on mode change
+  };
+
+  const visibleTemplates = [...templates]
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, 5);
+
   return (
     <div className="fade-in" style={{ padding: 28, overflow: 'auto', height: '100%' }}>
       <div style={{ marginBottom: 24 }}>
         <button className="btn ghost sm" onClick={() => navigate('home')}><Icon name="arrow-l" size={14}/> Inicio</button>
         <div className="t-h1" style={{ marginTop: 12 }}>Crear partida</div>
-        <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Configura tu partida en 4 pasos.</div>
+        <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Configura tu partida.</div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 18, maxWidth: 1080 }}>
@@ -125,9 +222,9 @@ export function ViewCreate({ navigate, blueColor: _blueColor }: ViewCreateProps)
           <Section title="Modo de juego" step={1}>
             <Grid4>
               <Card2 active={mode === 'local'} onClick={() => setMode('local')} icon="users" title="Local" desc="2 jugadores en el mismo equipo" />
-              <Card2 active={mode === 'ai'} onClick={() => setMode('ai')} icon="cpu" title="Contra IA" desc="Desafía al motor" />
+              <Card2 active={mode === 'ai'} onClick={() => setMode('ai')} icon="cpu" title="Contra IA" desc="Desafía al motor" badge="Beta" />
               <Card2 active={mode === 'online'} onClick={() => setMode('online')} icon="globe" title="Online" desc="Multijugador en línea" badge="Ranked" />
-              <Card2 active={mode === 'private'} onClick={() => setMode('private')} icon="lock" title="Sala privada" desc="Con código de invitación" />
+              <Card2 active={mode === 'private'} onClick={() => setMode('private')} icon="lock" title="Sala privada" desc="Con código de invitación" badge="Próximamente" />
             </Grid4>
           </Section>
 
@@ -136,15 +233,21 @@ export function ViewCreate({ navigate, blueColor: _blueColor }: ViewCreateProps)
             <Section title="Dificultad de la IA" step={2}>
               <Grid4>
                 <Card2 active={diff === 'easy'} onClick={() => setDiff('easy')} icon="star" title="Fácil" desc="ELO ~1100 · ideal para aprender" />
-                <Card2 active={diff === 'med'} onClick={() => setDiff('med')} icon="star" title="Medio" desc="ELO ~1500 · juego sólido" />
-                <Card2 active={diff === 'hard'} onClick={() => setDiff('hard')} icon="star" title="Difícil" desc="ELO ~1850 · evalúa 5 jugadas" />
-                <Card2 active={diff === 'expert'} onClick={() => setDiff('expert')} icon="sparkle" title="Experto" desc="ELO 2100+ · MCTS profundo" badge="Reto" />
+                <div style={{ opacity: 0.4, pointerEvents: 'none' }}>
+                  <Card2 active={diff === 'med'} onClick={() => setDiff('med')} icon="star" title="Medio" desc="ELO ~1500 · juego sólido" badge="Próximamente" />
+                </div>
+                <div style={{ opacity: 0.4, pointerEvents: 'none' }}>
+                  <Card2 active={diff === 'hard'} onClick={() => setDiff('hard')} icon="star" title="Difícil" desc="ELO ~1850 · evalúa 5 jugadas" badge="Próximamente" />
+                </div>
+                <div style={{ opacity: 0.4, pointerEvents: 'none' }}>
+                  <Card2 active={diff === 'expert'} onClick={() => setDiff('expert')} icon="sparkle" title="Experto" desc="ELO 2100+ · MCTS profundo" badge="Próximamente" />
+                </div>
               </Grid4>
             </Section>
           )}
 
           {/* TIEMPO */}
-          <Section title="Control de tiempo" step={mode === 'ai' ? 3 : 2}>
+          <Section title="Control de tiempo" step={timeStep}>
             <Grid4>
               <Card2 active={time === 'none'} onClick={() => setTime('none')} icon="clock" title="Sin límite" desc="Casual / análisis" />
               <Card2 active={time === 'blitz'} onClick={() => setTime('blitz')} icon="bolt" title="Blitz" desc="5 min + 3 s/jugada" />
@@ -164,41 +267,64 @@ export function ViewCreate({ navigate, blueColor: _blueColor }: ViewCreateProps)
               </div>
             )}
           </Section>
-
-          {/* PRIVACIDAD */}
-          <Section title="Visibilidad" step={mode === 'ai' ? 4 : 3}>
-            <Grid4>
-              <Card2 active={privacy === 'public'} onClick={() => setPrivacy('public')} icon="globe" title="Pública" desc="Cualquiera puede unirse" />
-              <Card2 active={privacy === 'private'} onClick={() => setPrivacy('private')} icon="lock" title="Privada" desc="Solo con código de sala" />
-            </Grid4>
-          </Section>
         </div>
 
-        {/* Summary */}
+        {/* Panel lateral */}
         <div style={{ position: 'sticky', top: 0 }}>
+          {/* Resumen */}
           <div className="card" style={{ padding: 18 }}>
             <div className="t-tag" style={{ marginBottom: 10 }}>Resumen</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
               <SummaryRow k="Modo" v={modeLabel} />
               {mode === 'ai' && <SummaryRow k="Dificultad" v={diffLabel} />}
               <SummaryRow k="Tiempo" v={timeLabel} />
-              <SummaryRow k="Visibilidad" v={privacy === 'public' ? 'Pública' : 'Privada'} />
               <SummaryRow k="ELO impactado" v={mode === 'online' ? 'Sí, ±18' : 'No'} />
               <SummaryRow k="Espectadores" v="Permitidos" />
             </div>
-            <button className="btn primary lg" style={{ width: '100%', marginBottom: 8 }} onClick={handleCreate}>
-              <Icon name="play" size={14}/> {mode === 'local' ? 'Iniciar partida local' : 'Crear y abrir lobby'}
+            <button
+              className="btn primary lg"
+              style={{ width: '100%', marginBottom: 8 }}
+              onClick={handleCreate}
+              disabled={isDisabled}
+            >
+              <Icon name="play" size={14}/>
+              {isDisabled ? 'En desarrollo' : mode === 'ai' ? 'Jugar contra Flattie' : 'Iniciar partida local'}
             </button>
-            <button className="btn ghost" style={{ width: '100%' }}>Guardar como plantilla</button>
+            <button className="btn ghost" style={{ width: '100%' }} onClick={handleSaveTemplate}>
+              {templateSaved ? '¡Guardado!' : 'Guardar como plantilla'}
+            </button>
           </div>
+
+          {/* Atajos de teclado */}
           <div className="card" style={{ padding: 14, marginTop: 12 }}>
             <div className="t-tag" style={{ marginBottom: 6 }}>Atajos de teclado</div>
             <div className="row" style={{ marginBottom: 4, fontSize: 12 }}>
-              <span className="muted">Crear sala</span><div className="spacer"/><Kbd>⌘</Kbd><Kbd>Enter</Kbd>
+              <span className="muted">Crear sala</span><div className="spacer"/><Kbd>Ctrl</Kbd><Kbd>Enter</Kbd>
             </div>
             <div className="row" style={{ fontSize: 12 }}>
               <span className="muted">Cancelar</span><div className="spacer"/><Kbd>Esc</Kbd>
             </div>
+          </div>
+
+          {/* Mis plantillas */}
+          <div className="card" style={{ padding: 14, marginTop: 12 }}>
+            <div className="t-tag" style={{ marginBottom: 8 }}>Mis plantillas</div>
+            {visibleTemplates.length === 0 ? (
+              <span className="muted" style={{ fontSize: 12 }}>Sin plantillas guardadas</span>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {visibleTemplates.map((t) => (
+                  <button
+                    key={t.id}
+                    className="btn ghost sm"
+                    style={{ width: '100%', textAlign: 'left', justifyContent: 'flex-start' }}
+                    onClick={() => handleApplyTemplate(t)}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

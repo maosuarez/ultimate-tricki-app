@@ -3,6 +3,9 @@ import { Icon, Avatar } from '../components/ui';
 import { UltimateBoard, MetaBoard } from '../components/game';
 import type { ScreenName, ModalName, MoveHistory } from '../types/game';
 import { useGameStore } from '../stores/gameStore';
+import { useSettingsStore } from '../stores/settingsStore';
+import { playMove, playSubBoardCapture } from '../services/audioService';
+import { agentService } from '../services/agentService';
 
 interface ViewGameProps {
   blueColor: string;
@@ -13,7 +16,7 @@ interface ViewGameProps {
 
 interface PlayerCardProps {
   name: string;
-  elo: number;
+  elo?: number;
   country: string;
   color: string;
   side: 'X' | 'O';
@@ -69,7 +72,7 @@ function PlayerCard({ name, elo, country, color, side, timeLabel, active, captur
             <span style={{ fontWeight: 700, fontSize: 13 }}>{name}</span>
             {isYou && <span className="chip" style={{ padding: '1px 6px', fontSize: 9 }}>TÚ</span>}
           </div>
-          <div className="t-cap t-mono">ELO {elo} · {country}</div>
+          <div className="t-cap t-mono">{elo !== undefined ? `ELO ${elo} · ${country}` : '— Local'}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div className="t-mono" style={{
@@ -162,31 +165,82 @@ export function ViewGame({
   navigate,
   openModal,
 }: ViewGameProps): React.ReactElement {
-  const { game, makeMove, playerX, playerO, chatMessages, gameWinner, addChatMessage, isActive } = useGameStore();
+  const { game, makeMove, playerX, playerO, chatMessages, gameWinner, isActive, timeX, timeO, tickTimer, aiAgentId, botSide } = useGameStore();
+  const { showCoordinates, highlightLastMove } = useSettingsStore();
 
   const chatRef = React.useRef<HTMLDivElement>(null);
-  const [chatMsg, setChatMsg] = React.useState('');
-  const [timeX, setTimeX] = React.useState(300);
-  const [timeO, setTimeO] = React.useState(300);
-  const [activeTab, setActiveTab] = React.useState<'Eventos' | 'Movimientos' | 'Chat'>('Movimientos');
+  const [activeTab, setActiveTab] = React.useState<'Eventos' | 'Movimientos'>('Movimientos');
 
-  // Reset timers when a new game starts (history becomes empty)
+  const aiSessionIdRef = React.useRef<string | null>(null);
+  const isRequestingRef = React.useRef(false);
+  const [isThinking, setIsThinking] = React.useState(false);
+
+  // Play sounds on each move — detects new sub-board captures vs plain moves
+  const historyLength = game.history.length;
+  const prevHistoryLength = React.useRef(0);
+  const prevSubWinners = React.useRef<(string | null)[]>(game.sb.map((s) => s.winner));
+
   React.useEffect(() => {
-    if (game.history.length === 0) {
-      setTimeX(300);
-      setTimeO(300);
+    if (historyLength > prevHistoryLength.current) {
+      const newWin = game.sb.some((s, i) => s.winner && !prevSubWinners.current[i]);
+      if (newWin) {
+        playSubBoardCapture();
+      } else {
+        playMove();
+      }
+      prevHistoryLength.current = historyLength;
+      prevSubWinners.current = game.sb.map((s) => s.winner);
     }
-  }, [game.history.length]);
+  }, [historyLength, game.sb]);
+
+  // AI session lifecycle — open when game starts with an agent, close on cleanup
+  React.useEffect(() => {
+    if (!aiAgentId) return;
+
+    let sessionId: string | null = null;
+
+    agentService.startSession(aiAgentId).then((id) => {
+      sessionId = id;
+      aiSessionIdRef.current = id;
+    });
+
+    return () => {
+      if (sessionId) agentService.stopSession(sessionId);
+      aiSessionIdRef.current = null;
+    };
+  }, [aiAgentId]);
+
+  // Trigger bot move when it's the bot's turn
+  React.useEffect(() => {
+    const sessionId = aiSessionIdRef.current;
+    if (!sessionId) return;
+    if (!botSide) return;
+    if (game.turn !== botSide) return;
+    if (gameWinner !== null) return;
+    if (isRequestingRef.current) return;
+
+    isRequestingRef.current = true;
+    setIsThinking(true);
+
+    agentService.requestMove(sessionId, game, 2000)
+      .then((mv) => {
+        makeMove(mv.sb, mv.cell);
+      })
+      .catch((err) => {
+        console.error('[AI] request_move failed:', err);
+      })
+      .finally(() => {
+        isRequestingRef.current = false;
+        setIsThinking(false);
+      });
+  }, [game.turn, game, botSide, gameWinner, makeMove]);
 
   // Tick the active player's clock — stops when game is over
   React.useEffect(() => {
     if (gameWinner !== null) return;
-    const t = setInterval(() => {
-      if (game.turn === 'X') setTimeX((s) => Math.max(0, s - 1));
-      else setTimeO((s) => Math.max(0, s - 1));
-    }, 1000);
+    const t = setInterval(() => { tickTimer(); }, 1000);
     return () => clearInterval(t);
-  }, [game.turn, gameWinner]);
+  }, [game.turn, gameWinner, tickTimer]);
 
   // Open result modal when the game ends
   React.useEffect(() => {
@@ -230,13 +284,6 @@ export function ViewGame({
   const fmt = (s: number): string =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-  const sendChat = () => {
-    const text = chatMsg.trim();
-    if (!text) return;
-    addChatMessage({ who: 'Tú', text, timestamp: new Date().toLocaleTimeString() });
-    setChatMsg('');
-  };
-
   const chatEvents: ChatEventData[] = chatMessages.map((m) => ({
     kind: 'msg',
     who: m.who,
@@ -253,21 +300,23 @@ export function ViewGame({
         {/* Game info */}
         <div className="card" style={{ padding: 14 }}>
           <div className="row" style={{ marginBottom: 10 }}>
-            <span className="chip blue"><Icon name="bolt" size={11}/> Local · 5+0</span>
+            <span className="chip blue">
+              <Icon name={aiAgentId ? 'cpu' : 'bolt'} size={11}/> {aiAgentId ? 'vs IA · Flattie' : 'Local · 5+0'}
+            </span>
             <div className="spacer" />
-            <span className="t-cap t-mono">LOCAL</span>
+            <span className="t-cap t-mono">{aiAgentId ? 'IA' : 'LOCAL'}</span>
           </div>
           <div className="t-tag" style={{ marginBottom: 4 }}>Modo</div>
           <div style={{ fontSize: 14, fontWeight: 600 }}>Local · Dos jugadores</div>
         </div>
 
         <PlayerCard
-          name={playerO} elo={1800} country="—" color={redColor}
+          name={playerO} country="—" color={redColor}
           side="O" timeLabel={fmt(timeO)} active={game.turn === 'O'}
           captures={game.sb.filter((s) => s.winner === 'O').length}
         />
         <PlayerCard
-          name={playerX} elo={1800} country="—" color={blueColor}
+          name={playerX} country="—" color={blueColor}
           side="X" timeLabel={fmt(timeX)} active={game.turn === 'X'}
           captures={game.sb.filter((s) => s.winner === 'X').length}
           isYou
@@ -323,6 +372,11 @@ export function ViewGame({
                 boxShadow: `0 0 8px ${game.turn === 'X' ? blueColor : redColor}`,
               }}/>
               {game.turn === 'X' ? `Turno de ${playerX}` : `Turno de ${playerO}`}
+              {isThinking && (
+                <span className="t-cap" style={{ color: 'var(--text-3)', marginLeft: 8 }}>
+                  Pensando...
+                </span>
+              )}
             </div>
             <div className="t-cap" style={{ marginTop: 2 }}>
               {game.activeSb !== null
@@ -346,8 +400,10 @@ export function ViewGame({
               game={game}
               blueColor={blueColor}
               redColor={redColor}
-              canInteract={gameWinner === null}
+              canInteract={gameWinner === null && game.turn !== botSide}
               onMove={makeMove}
+              showCoordinates={showCoordinates}
+              highlightLastMove={highlightLastMove}
             />
           </div>
         </div>
@@ -357,7 +413,7 @@ export function ViewGame({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
         {/* Tabs */}
         <div className="card" style={{ padding: 4, display: 'flex', gap: 2 }}>
-          {(['Eventos', 'Movimientos', 'Chat'] as const).map((t) => (
+          {(['Eventos', 'Movimientos'] as const).map((t) => (
             <div key={t} onClick={() => setActiveTab(t)} style={{
               flex: 1, padding: '7px 0', textAlign: 'center',
               fontSize: 12, fontWeight: 600,
@@ -419,42 +475,6 @@ export function ViewGame({
             </div>
           )}
 
-          {activeTab === 'Chat' && (
-            <>
-              <div ref={chatRef} style={{
-                flex: 1, overflow: 'auto', padding: 14,
-                display: 'flex', flexDirection: 'column', gap: 8,
-                minHeight: 0,
-              }}>
-                {chatEvents.filter((e) => e.kind === 'msg').length === 0 ? (
-                  <div className="t-cap" style={{ textAlign: 'center', padding: '4px 0' }}>
-                    Sin mensajes aún.
-                  </div>
-                ) : (
-                  chatEvents
-                    .filter((e) => e.kind === 'msg')
-                    .map((e, i) => (
-                      <ChatEvent key={i} ev={e} blueColor={blueColor} redColor={redColor} />
-                    ))
-                )}
-              </div>
-              <div style={{
-                borderTop: '1px solid var(--border)',
-                padding: 10,
-                display: 'flex', gap: 6, alignItems: 'center',
-              }}>
-                <input
-                  className="input"
-                  placeholder="Mensaje..."
-                  value={chatMsg}
-                  onChange={(e) => setChatMsg(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') sendChat(); }}
-                  style={{ flex: 1, padding: '7px 10px', fontSize: 12 }}
-                />
-                <button className="btn icon ghost" onClick={sendChat}><Icon name="send" size={14}/></button>
-              </div>
-            </>
-          )}
         </div>
       </div>
     </div>

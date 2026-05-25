@@ -42,8 +42,11 @@ function formatRelative(isoDate: string): string {
 }
 
 export function ViewDashboard({ navigate, blueColor, redColor }: ViewDashboardProps): React.ReactElement {
+
+  // Datos del usuario actual
   const { profile, stats, globalRanking, recentMatches, isLoading } = useCurrentUser();
 
+  // Cálculos para display de estadísticas
   const displayName = profile?.displayName ?? 'Jugador';
   const elo = stats ? stats.wins + stats.losses + stats.draws > 0 ? profile?.rating ?? 0 : 0 : null;
   const eloDisplay = elo !== null ? elo.toLocaleString() : '—';
@@ -92,6 +95,7 @@ export function ViewDashboard({ navigate, blueColor, redColor }: ViewDashboardPr
         alignItems: 'center', marginBottom: 22,
       }}>
         <div>
+          {/* Saludo y botones de acción */}
           <div className="t-tag" style={{ marginBottom: 10 }}>Bienvenido de vuelta</div>
           <div className="t-display" style={{ marginBottom: 6 }}>Hola, <span style={{ color: blueColor }}>{displayName}</span>.</div>
           <div className="muted" style={{ fontSize: 14, marginBottom: 18, maxWidth: 540 }}>
@@ -112,7 +116,7 @@ export function ViewDashboard({ navigate, blueColor, redColor }: ViewDashboardPr
         {/* Mini meta-board preview */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
           <MetaBoard game={buildSampleGame()} size={150} blueColor={blueColor} redColor={redColor} />
-          <div className="t-cap">Última partida · turno 31</div>
+          <div className="t-cap">Piensa. Marca. Gana.</div>
         </div>
       </div>
 

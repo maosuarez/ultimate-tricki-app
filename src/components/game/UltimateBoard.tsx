@@ -8,6 +8,8 @@ interface UltimateBoardProps {
   redColor: string;
   canInteract: boolean;
   onMove: (sb: number, cell: number) => void;
+  showCoordinates: boolean;
+  highlightLastMove: boolean;
 }
 
 export const UltimateBoard: FC<UltimateBoardProps> = ({
@@ -16,6 +18,8 @@ export const UltimateBoard: FC<UltimateBoardProps> = ({
   redColor,
   canInteract,
   onMove,
+  showCoordinates,
+  highlightLastMove,
 }) => {
   const [hover, setHover] = useState<{ sb: number; cell: number } | null>(null);
 
@@ -60,6 +64,8 @@ export const UltimateBoard: FC<UltimateBoardProps> = ({
             setHover={setHover}
             blueColor={blueColor}
             redColor={redColor}
+            showCoordinates={showCoordinates}
+            highlightLastMove={highlightLastMove}
           />
         );
       })}

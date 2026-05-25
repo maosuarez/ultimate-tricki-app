@@ -13,6 +13,8 @@ interface SubBoardProps {
   setHover: (h: { sb: number; cell: number } | null) => void;
   blueColor: string;
   redColor: string;
+  showCoordinates: boolean;
+  highlightLastMove: boolean;
 }
 
 export const SubBoard: FC<SubBoardProps> = ({
@@ -26,6 +28,8 @@ export const SubBoard: FC<SubBoardProps> = ({
   setHover,
   blueColor,
   redColor,
+  showCoordinates,
+  highlightLastMove,
 }) => {
   const containerStyle: React.CSSProperties = {
     position: 'relative',
@@ -51,10 +55,12 @@ export const SubBoard: FC<SubBoardProps> = ({
     <div style={containerStyle}>
       <div style={gridStyle}>
         {sb.cells.map((cell, cellIdx) => {
-          const isLast =
+          const isLastRaw =
             lastMove !== null &&
             lastMove.sb === sbIdx &&
             lastMove.cell === cellIdx;
+          // Respect the highlightLastMove setting
+          const isLast = isLastRaw && highlightLastMove;
           const isHovered =
             hover !== null &&
             hover.sb === sbIdx &&
@@ -97,6 +103,18 @@ export const SubBoard: FC<SubBoardProps> = ({
               }}
               onMouseLeave={() => setHover(null)}
             >
+              {showCoordinates && !cell && (
+                <span style={{
+                  fontSize: 7,
+                  color: 'var(--text-3)',
+                  position: 'absolute',
+                  top: 2,
+                  left: 3,
+                  userSelect: 'none',
+                }}>
+                  {cellIdx + 1}
+                </span>
+              )}
               {cell && (
                 <Mark
                   player={cell}

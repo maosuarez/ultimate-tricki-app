@@ -1,8 +1,11 @@
 import { useState, useEffect, type FC } from 'react';
+import { useSettingsStore } from './stores/settingsStore';
 import { Icon, Avatar, Kbd, ProgressBar } from './components/ui';
 import { useGameStore } from './stores/gameStore';
 import { useUserStore } from './stores/userStore';
 import { useCurrentUser } from './hooks/useCurrentUser';
+import { useAudioSync } from './hooks/useAudioSync';
+import * as audioService from './services/audioService';
 import type { ScreenName, ModalName, Player } from './types/game';
 import { ViewDashboard } from './pages/HomePage';
 import { ViewGame } from './pages/GamePage';
@@ -14,6 +17,8 @@ import { ViewHistory } from './pages/HistoryPage';
 import { ViewReplay } from './pages/ReplayPage';
 import { ViewSettings } from './pages/SettingsPage';
 import { ViewLogin } from './pages/LoginPage';
+import { MetaBoard } from './components/game/MetaBoard';
+import { buildSampleGame } from './utils/boardUtils';
 
 const NAV = [
   { k: 'home', icon: 'home', label: 'Inicio', screen: 'home' },
@@ -367,71 +372,74 @@ interface FlagModalProps {
   navigate: (s: ScreenName) => void;
 }
 
-const FlagModal: FC<FlagModalProps> = ({ onClose, navigate }) => (
-  <div
-    style={{
-      position: 'absolute',
-      inset: 0,
-      zIndex: 50,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'rgba(0,0,0,0.6)',
-      backdropFilter: 'blur(4px)',
-    }}
-    onClick={onClose}
-  >
+const FlagModal: FC<FlagModalProps> = ({ onClose, navigate }) => {
+  const resetGame = useGameStore((s) => s.resetGame);
+  return (
     <div
       style={{
-        width: 320,
-        background: 'var(--bg-2)',
-        border: '1px solid var(--border)',
-        borderRadius: 16,
-        padding: 28,
+        position: 'absolute',
+        inset: 0,
+        zIndex: 50,
         display: 'flex',
-        flexDirection: 'column',
-        gap: 16,
         alignItems: 'center',
-        textAlign: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(4px)',
       }}
-      onClick={(e) => e.stopPropagation()}
+      onClick={onClose}
     >
       <div
         style={{
-          width: 56,
-          height: 56,
-          borderRadius: '50%',
-          background: 'rgba(239,68,68,0.15)',
+          width: 320,
+          background: 'var(--bg-2)',
+          border: '1px solid var(--border)',
+          borderRadius: 16,
+          padding: 28,
           display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
           alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--red)',
-          fontSize: 26,
+          textAlign: 'center',
         }}
+        onClick={(e) => e.stopPropagation()}
       >
-        🏳️
-      </div>
-      <div>
-        <div style={{ fontWeight: 700, fontSize: 16 }}>¿Abandonar la partida?</div>
-        <div className="t-cap" style={{ marginTop: 6 }}>
-          -15 ELO y contará como derrota
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'rgba(239,68,68,0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--red)',
+            fontSize: 26,
+          }}
+        >
+          🏳️
+        </div>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>¿Abandonar la partida?</div>
+          <div className="t-cap" style={{ marginTop: 6 }}>
+            La partida terminará sin penalización de ELO
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+          <button className="btn ghost" style={{ flex: 1 }} onClick={onClose}>
+            Cancelar
+          </button>
+          <button
+            className="btn"
+            style={{ flex: 1, background: 'var(--red)', color: '#fff' }}
+            onClick={() => { resetGame(); onClose(); navigate('home'); }}
+          >
+            Abandonar
+          </button>
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 10, width: '100%' }}>
-        <button className="btn ghost" style={{ flex: 1 }} onClick={onClose}>
-          Cancelar
-        </button>
-        <button
-          className="btn"
-          style={{ flex: 1, background: 'var(--red)', color: '#fff' }}
-          onClick={() => { onClose(); navigate('home'); }}
-        >
-          Abandonar
-        </button>
-      </div>
     </div>
-  </div>
-);
+  );
+};
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -485,21 +493,56 @@ const SettingsModal: FC<SettingsModalProps> = ({ onClose }) => (
   </div>
 );
 
+const SAMPLE_GAME = buildSampleGame();
+
 function App() {
   const [screen, setScreen] = useState<ScreenName>('home');
   const [modal, setModal] = useState<ModalName>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { game } = useGameStore();
-  const [accentColor] = useState('#3B82F6');
-  const [oColor] = useState('#EF4444');
+
+  const { colorX: accentColor, colorO: oColor, theme, reduceMotion, density } = useSettingsStore();
 
   const { authChecked, session, isGuest, guestName } = useCurrentUser();
   const { profile, signIn, signUp, enterAsGuest, signOut } = useUserStore();
 
+  useAudioSync(); // syncs volume settings to audio service in real time
+
+  // Apply density attribute to <html>
+  useEffect(() => {
+    document.documentElement.setAttribute('data-density', density);
+  }, [density]);
+
+  // Start ambient music on mount, stop on unmount
+  useEffect(() => {
+    audioService.startMusic();
+    return () => audioService.stopMusic();
+  }, []);
+
+  // Apply player colors as CSS vars
   useEffect(() => {
     document.documentElement.style.setProperty('--blue', accentColor);
     document.documentElement.style.setProperty('--red', oColor);
   }, [accentColor, oColor]);
+
+  // Apply theme to <html data-theme>
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.setAttribute('data-theme', 'dark');
+    } else if (theme === 'light') {
+      root.setAttribute('data-theme', 'light');
+    } else {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+    }
+  }, [theme]);
+
+  // Apply reduce-motion as CSS duration vars
+  useEffect(() => {
+    document.documentElement.style.setProperty('--duration-fast', reduceMotion ? '0ms' : '150ms');
+    document.documentElement.style.setProperty('--duration-normal', reduceMotion ? '0ms' : '250ms');
+  }, [reduceMotion]);
 
   const navigate = (s: ScreenName) => setScreen(s);
 
@@ -566,7 +609,12 @@ function App() {
             onClick={() => setSidebarOpen(!sidebarOpen)}
             title={sidebarOpen ? 'Contraer panel' : 'Expandir panel'}
           >
-            <Icon name="sidebar" size={18} />
+            <span className="nav-toggle-board">
+              <MetaBoard game={SAMPLE_GAME} size={34} blueColor={accentColor} redColor={oColor} />
+            </span>
+            <span className="nav-toggle-icon">
+              <Icon name={sidebarOpen ? 'panels-left' : 'panels-right'} size={18} />
+            </span>
           </button>
           {sidebarOpen && (
             <div className="nav-brand">

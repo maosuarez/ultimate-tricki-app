@@ -27,6 +27,8 @@ const paths: Record<string, React.ReactNode> = {
   x:             <path d="M6 6l12 12M18 6L6 18"/>,
   'chev-r':      <path d="M9 6l6 6-6 6"/>,
   sidebar:       <><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></>,
+  'panels-left':  <path d="M11 7l-5 5 5 5M17 7l-5 5 5 5"/>,
+  'panels-right': <path d="M7 7l5 5-5 5M13 7l5 5-5 5"/>,
   'chev-d':      <path d="M6 9l6 6 6-6"/>,
   'arrow-l':     <path d="M19 12H5M12 19l-7-7 7-7"/>,
   'arrow-r':     <path d="M5 12h14M12 5l7 7-7 7"/>,

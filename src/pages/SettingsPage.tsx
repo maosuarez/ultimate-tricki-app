@@ -1,13 +1,19 @@
-import React from 'react';
+import React, { type FC } from 'react';
 import { Icon } from '../components/ui';
 import type { ScreenName } from '../types/game';
+import { useSettingsStore } from '../stores/settingsStore';
+import { useUserStore } from '../stores/userStore';
 
-interface ViewSettingsProps {
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+export interface ViewSettingsProps {
   navigate: (screen: ScreenName) => void;
   blueColor: string;
 }
 
-type SectionKey = 'general' | 'audio' | 'theme' | 'lang' | 'notif' | 'account' | 'net' | 'a11y';
+// ─── Section definition ───────────────────────────────────────────────────────
+
+type SectionKey = 'apariencia' | 'audio' | 'juego' | 'a11y' | 'account';
 
 interface SectionDef {
   k: SectionKey;
@@ -15,32 +21,20 @@ interface SectionDef {
   label: string;
 }
 
+const SECTIONS: SectionDef[] = [
+  { k: 'apariencia', icon: 'palette',       label: 'Apariencia' },
+  { k: 'audio',      icon: 'volume',        label: 'Audio' },
+  { k: 'juego',      icon: 'gamepad',       label: 'Juego' },
+  { k: 'a11y',       icon: 'accessibility', label: 'Accesibilidad' },
+  { k: 'account',    icon: 'user',          label: 'Cuenta' },
+];
+
+// ─── Shared primitives ────────────────────────────────────────────────────────
+
 interface SettingsGroupProps {
   title: string;
   children: React.ReactNode;
 }
-
-interface SettingsRowProps {
-  label: string;
-  desc?: string;
-  control: React.ReactNode;
-}
-
-interface ToggleProps {
-  on: boolean;
-  onChange?: (v: boolean) => void;
-}
-
-const SECTIONS: SectionDef[] = [
-  { k: 'general', icon: 'settings',      label: 'General' },
-  { k: 'audio',   icon: 'volume',        label: 'Audio' },
-  { k: 'theme',   icon: 'palette',       label: 'Tema' },
-  { k: 'lang',    icon: 'language',      label: 'Idioma' },
-  { k: 'notif',   icon: 'bell',          label: 'Notificaciones' },
-  { k: 'account', icon: 'user',          label: 'Cuenta' },
-  { k: 'net',     icon: 'wifi',          label: 'Red' },
-  { k: 'a11y',    icon: 'accessibility', label: 'Accesibilidad' },
-];
 
 function SettingsGroup({ title, children }: SettingsGroupProps): React.ReactElement {
   return (
@@ -51,9 +45,23 @@ function SettingsGroup({ title, children }: SettingsGroupProps): React.ReactElem
   );
 }
 
-function SettingsRow({ label, desc, control }: SettingsRowProps): React.ReactElement {
+interface SettingsRowProps {
+  label: string;
+  desc?: string;
+  control: React.ReactNode;
+  last?: boolean;
+}
+
+function SettingsRow({ label, desc, control, last }: SettingsRowProps): React.ReactElement {
   return (
-    <div className="row" style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', gap: 16 }}>
+    <div
+      className="row"
+      style={{
+        padding: '14px 18px',
+        borderBottom: last ? 'none' : '1px solid var(--border)',
+        gap: 16,
+      }}
+    >
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13.5, fontWeight: 600 }}>{label}</div>
         {desc && <div className="t-cap" style={{ marginTop: 2 }}>{desc}</div>}
@@ -63,277 +71,342 @@ function SettingsRow({ label, desc, control }: SettingsRowProps): React.ReactEle
   );
 }
 
-function Toggle({ on, onChange }: ToggleProps): React.ReactElement {
-  return (
-    <div
-      className={'switch ' + (on ? 'on' : '')}
-      onClick={() => onChange?.(!on)}
-    />
-  );
+interface ToggleProps {
+  on: boolean;
+  onChange: (v: boolean) => void;
 }
 
-function SettingsGeneral(): React.ReactElement {
-  const [autoSt, setAutoSt] = React.useState(true);
-  const [hd, setHd] = React.useState(false);
-  const [conf, setConf] = React.useState(true);
-  return (
-    <div>
-      <div className="t-h1" style={{ marginBottom: 18 }}>General</div>
-      <SettingsGroup title="Comportamiento">
-        <SettingsRow
-          label="Iniciar Ultimate al arrancar el sistema"
-          desc="La app se abrirá automáticamente al iniciar sesión en el SO."
-          control={<Toggle on={autoSt} onChange={setAutoSt}/>}
-        />
-        <SettingsRow
-          label="Modo escritorio HD"
-          desc="Mejora calidad visual en monitores 2K/4K"
-          control={<Toggle on={hd} onChange={setHd}/>}
-        />
-        <SettingsRow
-          label="Confirmar al abandonar partida ranked"
-          desc="Muestra diálogo antes de rendirte"
-          control={<Toggle on={conf} onChange={setConf}/>}
-        />
-      </SettingsGroup>
-      <SettingsGroup title="Hardware">
-        <SettingsRow
-          label="Aceleración GPU"
-          desc="Renderizado WebGPU (recomendado)"
-          control={<Toggle on={true}/>}
-        />
-        <SettingsRow
-          label="Límite de FPS"
-          desc="Reduce consumo en portátiles"
-          control={<span className="t-mono" style={{ color: 'var(--text-2)' }}>120 fps ▾</span>}
-        />
-        <SettingsRow
-          label="Caché local"
-          desc="14.2 MB usados · partidas, replays, miniaturas"
-          control={<button className="btn sm">Limpiar</button>}
-        />
-      </SettingsGroup>
-    </div>
-  );
-}
+const Toggle: FC<ToggleProps> = ({ on, onChange }) => (
+  <div className={`switch ${on ? 'on' : ''}`} onClick={() => onChange(!on)} />
+);
 
-function SettingsAudio({ blueColor }: { blueColor: string }): React.ReactElement {
-  return (
-    <div>
-      <div className="t-h1" style={{ marginBottom: 18 }}>Audio</div>
-      <SettingsGroup title="Mezcla">
-        <SettingsRow label="Volumen general" desc="Maestro"
-                     control={<input type="range" defaultValue="70" style={{ width: 180, accentColor: blueColor }} />} />
-        <SettingsRow label="Efectos de juego" desc="Click, victoria, contador"
-                     control={<input type="range" defaultValue="80" style={{ width: 180, accentColor: blueColor }} />} />
-        <SettingsRow label="Música ambiente" desc="Lobby y menús"
-                     control={<input type="range" defaultValue="35" style={{ width: 180, accentColor: blueColor }} />} />
-        <SettingsRow label="Voces del oponente" desc="Reacciones (emotes de chat)"
-                     control={<Toggle on={false}/>} />
-      </SettingsGroup>
-    </div>
-  );
-}
+// ─── Apariencia ───────────────────────────────────────────────────────────────
 
-function SettingsTheme({ blueColor }: { blueColor: string }): React.ReactElement {
+const COLORS_X = ['#3B82F6', '#06B6D4', '#8B5CF6', '#22C55E'] as const;
+const COLORS_O = ['#EF4444', '#F59E0B', '#EC4899', '#71717A'] as const;
+
+type ThemeValue = 'dark' | 'light' | 'system';
+type DensityValue = 'compact' | 'comfortable' | 'spacious';
+
+function SettingsApariencia(): React.ReactElement {
+  const { theme, density, colorX, colorO, setTheme, setDensity, setColorX, setColorO } =
+    useSettingsStore();
+
+  const themeOptions: { v: ThemeValue; label: string }[] = [
+    { v: 'dark', label: 'Oscuro' },
+    { v: 'light', label: 'Claro' },
+    { v: 'system', label: 'Sistema' },
+  ];
+
+  const densityOptions: { v: DensityValue; label: string }[] = [
+    { v: 'compact', label: 'Compacta' },
+    { v: 'comfortable', label: 'Cómoda' },
+    { v: 'spacious', label: 'Amplia' },
+  ];
+
   return (
     <div>
-      <div className="t-h1" style={{ marginBottom: 18 }}>Tema</div>
-      <SettingsGroup title="Apariencia">
+      <div className="t-h1" style={{ marginBottom: 18 }}>Apariencia</div>
+      <SettingsGroup title="Tema">
         <SettingsRow
           label="Modo"
           desc="Recomendado: oscuro"
-          control={(
+          control={
             <div className="row" style={{ gap: 4 }}>
-              <button className="btn sm" style={{ background: 'var(--card-hi)' }}>Oscuro</button>
-              <button className="btn sm">Claro</button>
-              <button className="btn sm">Sistema</button>
+              {themeOptions.map(({ v, label }) => (
+                <button
+                  key={v}
+                  className="btn sm"
+                  style={theme === v ? { background: 'var(--card-hi)' } : undefined}
+                  onClick={() => setTheme(v)}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-          )}
+          }
         />
         <SettingsRow
           label="Densidad"
           desc="Espaciado entre elementos"
-          control={(
+          control={
             <div className="row" style={{ gap: 4 }}>
-              <button className="btn sm">Compacta</button>
-              <button className="btn sm" style={{ background: 'var(--card-hi)' }}>Cómoda</button>
-              <button className="btn sm">Amplia</button>
+              {densityOptions.map(({ v, label }) => (
+                <button
+                  key={v}
+                  className="btn sm"
+                  style={density === v ? { background: 'var(--card-hi)' } : undefined}
+                  onClick={() => setDensity(v)}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-          )}
+          }
         />
+      </SettingsGroup>
+      <SettingsGroup title="Colores de jugadores">
         <SettingsRow
           label="Color de X"
           desc="Tu lado en partidas"
-          control={(
+          control={
             <div className="row" style={{ gap: 6 }}>
-              {['#3B82F6','#06B6D4','#8B5CF6','#22C55E'].map((c) => (
-                <div key={c} style={{
-                  width: 22, height: 22, borderRadius: '50%',
-                  background: c, border: c === blueColor ? '2px solid #fff' : '2px solid transparent',
-                }}/>
+              {COLORS_X.map((c) => (
+                <div
+                  key={c}
+                  onClick={() => setColorX(c)}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: '50%',
+                    background: c,
+                    border: c === colorX ? '2px solid #fff' : '2px solid transparent',
+                    cursor: 'pointer',
+                  }}
+                />
               ))}
             </div>
-          )}
+          }
         />
         <SettingsRow
           label="Color de O"
           desc="Oponente"
-          control={(
+          last
+          control={
             <div className="row" style={{ gap: 6 }}>
-              {['#EF4444','#F59E0B','#EC4899','#71717A'].map((c) => (
-                <div key={c} style={{
-                  width: 22, height: 22, borderRadius: '50%',
-                  background: c, border: c === '#EF4444' ? '2px solid #fff' : '2px solid transparent',
-                }}/>
+              {COLORS_O.map((c) => (
+                <div
+                  key={c}
+                  onClick={() => setColorO(c)}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: '50%',
+                    background: c,
+                    border: c === colorO ? '2px solid #fff' : '2px solid transparent',
+                    cursor: 'pointer',
+                  }}
+                />
               ))}
             </div>
-          )}
+          }
         />
       </SettingsGroup>
     </div>
   );
 }
 
-function SettingsLang(): React.ReactElement {
+// ─── Audio ────────────────────────────────────────────────────────────────────
+
+function SettingsAudio(): React.ReactElement {
+  const { colorX, volumeMaster, volumeSfx, volumeMusic, setVolumeMaster, setVolumeSfx, setVolumeMusic } =
+    useSettingsStore();
+
   return (
     <div>
-      <div className="t-h1" style={{ marginBottom: 18 }}>Idioma</div>
-      <SettingsGroup title="Preferencias">
+      <div className="t-h1" style={{ marginBottom: 18 }}>Audio</div>
+      <SettingsGroup title="Mezcla">
         <SettingsRow
-          label="Idioma de la interfaz"
-          control={<span className="t-mono" style={{ color: 'var(--text-2)' }}>Español (MX) ▾</span>}
+          label="Volumen general"
+          desc={`Maestro · ${volumeMaster}%`}
+          control={
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={volumeMaster}
+              onChange={(e) => setVolumeMaster(Number(e.target.value))}
+              style={{ width: 180, accentColor: colorX }}
+            />
+          }
         />
         <SettingsRow
-          label="Formato de hora"
-          control={(
-            <div className="row" style={{ gap: 4 }}>
-              <button className="btn sm" style={{ background: 'var(--card-hi)' }}>24h</button>
-              <button className="btn sm">12h</button>
-            </div>
-          )}
+          label="Efectos de juego"
+          desc={`Click, victoria, contador · ${volumeSfx}%`}
+          control={
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={volumeSfx}
+              onChange={(e) => setVolumeSfx(Number(e.target.value))}
+              style={{ width: 180, accentColor: colorX }}
+            />
+          }
         />
         <SettingsRow
-          label="Zona horaria"
-          control={<span className="t-mono" style={{ color: 'var(--text-2)' }}>GMT−06 · CDT ▾</span>}
+          label="Música ambiente"
+          desc={`Lobby y menús · ${volumeMusic}%`}
+          last
+          control={
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={volumeMusic}
+              onChange={(e) => setVolumeMusic(Number(e.target.value))}
+              style={{ width: 180, accentColor: colorX }}
+            />
+          }
         />
       </SettingsGroup>
     </div>
   );
 }
 
-function SettingsNotif(): React.ReactElement {
+// ─── Juego ────────────────────────────────────────────────────────────────────
+
+function SettingsJuego(): React.ReactElement {
+  const {
+    showCoordinates,
+    highlightLastMove,
+    confirmResign,
+    setShowCoordinates,
+    setHighlightLastMove,
+    setConfirmResign,
+  } = useSettingsStore();
+
   return (
     <div>
-      <div className="t-h1" style={{ marginBottom: 18 }}>Notificaciones</div>
-      <SettingsGroup title="Eventos">
-        <SettingsRow label="Invitaciones de partida" control={<Toggle on={true}/>} />
-        <SettingsRow label="Tu turno (cuando vuelve la ventana)" control={<Toggle on={true}/>} />
-        <SettingsRow label="Amigo en línea" control={<Toggle on={false}/>} />
-        <SettingsRow label="Mensajes de chat" control={<Toggle on={true}/>} />
-        <SettingsRow label="Sonido en notificaciones" control={<Toggle on={true}/>} />
+      <div className="t-h1" style={{ marginBottom: 18 }}>Juego</div>
+      <SettingsGroup title="Comportamiento">
+        <SettingsRow
+          label="Mostrar coordenadas"
+          desc="Fila y columna de cada celda"
+          control={<Toggle on={showCoordinates} onChange={setShowCoordinates} />}
+        />
+        <SettingsRow
+          label="Resaltar último movimiento"
+          desc="Indica visualmente la última jugada"
+          control={<Toggle on={highlightLastMove} onChange={setHighlightLastMove} />}
+        />
+        <SettingsRow
+          label="Confirmar al rendirse"
+          desc="Muestra diálogo antes de abandonar"
+          last
+          control={<Toggle on={confirmResign} onChange={setConfirmResign} />}
+        />
       </SettingsGroup>
     </div>
   );
 }
 
-function SettingsAccount(): React.ReactElement {
+// ─── Accesibilidad ────────────────────────────────────────────────────────────
+
+function SettingsA11y(): React.ReactElement {
+  const { reduceMotion, setReduceMotion } = useSettingsStore();
+
+  return (
+    <div>
+      <div className="t-h1" style={{ marginBottom: 18 }}>Accesibilidad</div>
+      <SettingsGroup title="Visual">
+        <SettingsRow
+          label="Reducir movimiento"
+          desc="Desactiva animaciones largas"
+          last
+          control={<Toggle on={reduceMotion} onChange={setReduceMotion} />}
+        />
+      </SettingsGroup>
+    </div>
+  );
+}
+
+// ─── Cuenta ───────────────────────────────────────────────────────────────────
+
+interface SettingsAccountProps {
+  navigate: (screen: ScreenName) => void;
+}
+
+function SettingsAccount({ navigate }: SettingsAccountProps): React.ReactElement {
+  const { session, profile, isGuest, guestName, signOut } = useUserStore();
+
+  const handleSignOut = () => {
+    void signOut();
+    navigate('login');
+  };
+
+  if (isGuest) {
+    const name = guestName ?? 'Invitado';
+    return (
+      <div>
+        <div className="t-h1" style={{ marginBottom: 18 }}>Cuenta</div>
+        <SettingsGroup title="Sesión actual">
+          <SettingsRow
+            label="Modo invitado"
+            desc={`Jugando como ${name}`}
+            last
+            control={
+              <button className="btn sm primary" onClick={() => navigate('login')}>
+                Iniciar sesión
+              </button>
+            }
+          />
+        </SettingsGroup>
+      </div>
+    );
+  }
+
+  const email = session?.email ?? '—';
+  const displayName = profile?.displayName ?? '—';
+  const rating = profile?.rating ?? '—';
+
   return (
     <div>
       <div className="t-h1" style={{ marginBottom: 18 }}>Cuenta</div>
       <SettingsGroup title="Perfil">
         <SettingsRow
           label="Email"
-          desc="lucas@example.com · verificado"
-          control={<button className="btn sm">Cambiar</button>}
+          desc={`${email} · verificado`}
+          control={<span className="t-mono" style={{ color: 'var(--fg-muted)' }}>{email}</span>}
         />
-        <SettingsRow label="Nombre visible" control={<span className="t-mono">Lucas H.</span>} />
         <SettingsRow
-          label="Conectado con"
-          control={(
-            <div className="row" style={{ gap: 6 }}>
-              <span className="chip"><Icon name="google" size={11}/> Google</span>
-              <span className="chip"><Icon name="github" size={11}/> GitHub</span>
-            </div>
-          )}
+          label="Nombre visible"
+          control={<span className="t-mono">{displayName}</span>}
+        />
+        <SettingsRow
+          label="ELO"
+          last
+          control={<span className="t-mono">{rating}</span>}
         />
       </SettingsGroup>
-      <SettingsGroup title="Seguridad">
-        <SettingsRow label="Autenticación en dos pasos" desc="App TOTP" control={<Toggle on={true}/>} />
-        <SettingsRow label="Sesiones activas" desc="3 dispositivos" control={<button className="btn sm">Ver</button>} />
+      <SettingsGroup title="Sesión">
         <SettingsRow
-          label="Eliminar cuenta"
-          desc="Acción irreversible. Tu historial será anonimizado."
-          control={<button className="btn sm danger">Eliminar</button>}
+          label="Cerrar sesión"
+          desc="Saldrás de tu cuenta en este dispositivo"
+          last
+          control={
+            <button className="btn sm" onClick={handleSignOut}>
+              Cerrar sesión
+            </button>
+          }
         />
-      </SettingsGroup>
-    </div>
-  );
-}
-
-function SettingsNet(): React.ReactElement {
-  return (
-    <div>
-      <div className="t-h1" style={{ marginBottom: 18 }}>Red</div>
-      <SettingsGroup title="Servidores">
-        <SettingsRow
-          label="Región preferida"
-          control={<span className="t-mono" style={{ color: 'var(--text-2)' }}>EU-West (24 ms) ▾</span>}
-        />
-        <SettingsRow
-          label="Servidores alternativos"
-          desc="EU-East 38 ms · NA-East 88 ms · SA 142 ms"
-          control={null}
-        />
-        <SettingsRow label="Reconexión automática" control={<Toggle on={true}/>} />
-        <SettingsRow label="Permitir conexiones P2P (lobby local)" control={<Toggle on={false}/>} />
       </SettingsGroup>
     </div>
   );
 }
 
-function SettingsA11y(): React.ReactElement {
-  return (
-    <div>
-      <div className="t-h1" style={{ marginBottom: 18 }}>Accesibilidad</div>
-      <SettingsGroup title="Visual">
-        <SettingsRow
-          label="Daltonismo: usar símbolos en marcas"
-          desc="Añade indicadores no basados en color"
-          control={<Toggle on={false}/>}
-        />
-        <SettingsRow label="Alto contraste" control={<Toggle on={false}/>} />
-        <SettingsRow label="Reducir movimiento" desc="Desactiva animaciones largas" control={<Toggle on={false}/>} />
-        <SettingsRow
-          label="Tamaño de texto"
-          control={(
-            <div className="row" style={{ gap: 4 }}>
-              <button className="btn sm">A−</button>
-              <button className="btn sm" style={{ background: 'var(--card-hi)' }}>100%</button>
-              <button className="btn sm">A+</button>
-            </div>
-          )}
-        />
-      </SettingsGroup>
-      <SettingsGroup title="Entrada">
-        <SettingsRow
-          label="Navegación por teclado"
-          desc="Mueve con WASD/flechas, Enter para colocar"
-          control={<Toggle on={true}/>}
-        />
-        <SettingsRow label="Tooltips persistentes" control={<Toggle on={true}/>} />
-      </SettingsGroup>
-    </div>
-  );
-}
+// ─── Root ─────────────────────────────────────────────────────────────────────
 
-export function ViewSettings({ navigate: _navigate, blueColor }: ViewSettingsProps): React.ReactElement {
-  const [section, setSection] = React.useState<SectionKey>('general');
+export function ViewSettings({ navigate }: ViewSettingsProps): React.ReactElement {
+  const [section, setSection] = React.useState<SectionKey>('apariencia');
 
   return (
-    <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '220px 1fr', height: '100%', overflow: 'hidden' }}>
-      <div style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)', padding: 16, overflow: 'auto' }}>
-        <div className="t-tag" style={{ padding: '4px 10px', marginBottom: 8 }}>Configuración</div>
+    <div
+      className="fade-in"
+      style={{ display: 'grid', gridTemplateColumns: '220px 1fr', height: '100%', overflow: 'hidden' }}
+    >
+      {/* Sidebar */}
+      <div
+        style={{
+          background: 'var(--surface)',
+          borderRight: '1px solid var(--border)',
+          padding: 16,
+          overflow: 'auto',
+        }}
+      >
+        <div className="t-tag" style={{ padding: '4px 10px', marginBottom: 8 }}>
+          Configuración
+        </div>
         {SECTIONS.map((s) => (
           <div
             key={s.k}
@@ -345,15 +418,14 @@ export function ViewSettings({ navigate: _navigate, blueColor }: ViewSettingsPro
           </div>
         ))}
       </div>
+
+      {/* Content */}
       <div style={{ padding: 28, overflow: 'auto' }}>
-        {section === 'general' && <SettingsGeneral />}
-        {section === 'audio'   && <SettingsAudio blueColor={blueColor} />}
-        {section === 'theme'   && <SettingsTheme blueColor={blueColor} />}
-        {section === 'lang'    && <SettingsLang />}
-        {section === 'notif'   && <SettingsNotif />}
-        {section === 'account' && <SettingsAccount />}
-        {section === 'net'     && <SettingsNet />}
-        {section === 'a11y'    && <SettingsA11y />}
+        {section === 'apariencia' && <SettingsApariencia />}
+        {section === 'audio'      && <SettingsAudio />}
+        {section === 'juego'      && <SettingsJuego />}
+        {section === 'a11y'       && <SettingsA11y />}
+        {section === 'account'    && <SettingsAccount navigate={navigate} />}
       </div>
     </div>
   );

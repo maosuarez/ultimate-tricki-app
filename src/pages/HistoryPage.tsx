@@ -47,9 +47,11 @@ export function ViewHistory({ navigate, blueColor: _blueColor, redColor: _redCol
   return (
     <div className="fade-in" style={{ padding: 28, overflow: 'auto', height: '100%' }}>
       <div className="row" style={{ marginBottom: 16 }}>
-        <div>
-          <div className="t-h1">Historial</div>
-          <div className="muted" style={{ fontSize: 13 }}>{matches.length} partidas · filtra por modo, resultado u oponente</div>
+
+        <div style={{ marginBottom: 24 }}>
+                <button className="btn ghost sm" onClick={() => navigate('home')}><Icon name="arrow-l" size={14}/> Inicio</button>
+                <div className="t-h1" style={{ marginTop: 12 }}>Historial</div>
+                <div className="muted" style={{ fontSize: 13 }}>{matches.length} partidas · filtra por modo, resultado u oponente</div>
         </div>
         <div className="spacer"/>
         <button className="btn"><Icon name="database" size={14}/> Exportar PGN</button>

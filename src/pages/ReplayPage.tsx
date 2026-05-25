@@ -138,7 +138,15 @@ export function ViewReplay({ navigate, blueColor, redColor, game }: ViewReplayPr
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div style={{ flex: 1, display: 'grid', placeItems: 'center', minHeight: 0 }}>
           <div style={{ width: 'min(100%, calc(100vh - 280px))', aspectRatio: '1/1', maxWidth: 680 }}>
-            <UltimateBoard game={game} blueColor={blueColor} redColor={redColor} canInteract={false} onMove={() => {}} />
+            <UltimateBoard
+              game={game}
+              blueColor={blueColor}
+              redColor={redColor}
+              canInteract={false}
+              onMove={() => {}}
+              showCoordinates={false}
+              highlightLastMove={true}
+            />
           </div>
         </div>
         {/* Transport */}
