@@ -16,11 +16,17 @@ interface GameStore {
   chatMessages: ChatMessage[];
   gameWinner: Player | 'draw' | null;
   isActive: boolean;
+  timeX: number;
+  timeO: number;
+  aiAgentId: string | null;
+  botSide: 'X' | 'O' | null;
   setGame: (game: GameState) => void;
   resetGame: () => void;
   makeMove: (sb: number, cell: number) => void;
   addChatMessage: (msg: ChatMessage) => void;
-  startLocalGame: (nameX: string, nameO: string) => void;
+  startLocalGame: (nameX: string, nameO: string, timeSecs?: number) => void;
+  startAiGame: (nameX: string, agentId: string, timeSecs: number) => void;
+  tickTimer: () => void;
 }
 
 export const useGameStore = create<GameStore>()(
@@ -32,10 +38,14 @@ export const useGameStore = create<GameStore>()(
       chatMessages: [],
       gameWinner: null,
       isActive: false,
+      timeX: 300,
+      timeO: 300,
+      aiAgentId: null,
+      botSide: null,
 
       setGame: (game) => set({ game }),
 
-      resetGame: () => set({ game: initGame(), gameWinner: null, chatMessages: [], isActive: false }),
+      resetGame: () => set({ game: initGame(), gameWinner: null, chatMessages: [], isActive: false, timeX: 300, timeO: 300, aiAgentId: null, botSide: null }),
 
       makeMove: (sb, cell) => {
         const { game } = get();
@@ -96,7 +106,7 @@ export const useGameStore = create<GameStore>()(
       addChatMessage: (msg) =>
         set((state) => ({ chatMessages: [...state.chatMessages, msg] })),
 
-      startLocalGame: (nameX, nameO) =>
+      startLocalGame: (nameX, nameO, timeSecs) =>
         set({
           game: initGame(),
           playerX: nameX,
@@ -104,7 +114,34 @@ export const useGameStore = create<GameStore>()(
           chatMessages: [],
           gameWinner: null,
           isActive: true,
+          timeX: timeSecs ?? 300,
+          timeO: timeSecs ?? 300,
+          aiAgentId: null,
+          botSide: null,
         }),
+
+      startAiGame: (nameX, agentId, timeSecs) =>
+        set({
+          game: initGame(),
+          playerX: nameX,
+          playerO: 'Flattie',
+          chatMessages: [],
+          gameWinner: null,
+          isActive: true,
+          timeX: timeSecs,
+          timeO: timeSecs,
+          aiAgentId: agentId,
+          botSide: 'O',
+        }),
+
+      tickTimer: () => {
+        const { game } = get();
+        if (game.turn === 'X') {
+          set((s) => ({ timeX: Math.max(0, s.timeX - 1) }));
+        } else {
+          set((s) => ({ timeO: Math.max(0, s.timeO - 1) }));
+        }
+      },
     }),
     { name: 'GameStore' }
   )
