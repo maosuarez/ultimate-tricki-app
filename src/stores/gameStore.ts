@@ -55,6 +55,9 @@ export const useGameStore = create<GameStore>()(
       makeMove: (sb, cell) => {
         const { game } = get();
 
+        // Validate: game must still be in progress
+        if (get().gameWinner !== null) return;
+
         // Validate: cell must be empty
         if (game.sb[sb].cells[cell] !== null) return;
 

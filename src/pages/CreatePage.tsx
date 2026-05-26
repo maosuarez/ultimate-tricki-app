@@ -2,6 +2,7 @@ import React from 'react';
 import { Icon, Kbd } from '../components/ui';
 import type { ScreenName } from '../types/game';
 import { useGameStore } from '../stores/gameStore';
+import { FEATURES } from '../config/features';
 
 interface ViewCreateProps {
   navigate: (screen: ScreenName) => void;
@@ -130,6 +131,12 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
   const startLocalGame = useGameStore((s) => s.startLocalGame);
   const startAiGame = useGameStore((s) => s.startAiGame);
 
+  React.useEffect(() => {
+    if (!FEATURES.MULTIPLAYER && (mode === 'online' || mode === 'private')) {
+      setMode('local');
+    }
+  }, []); // solo en mount
+
   // Sync privacy automatically based on mode — no user choice needed
   React.useEffect(() => {
     if (mode === 'private') setPrivacy('private');
@@ -232,8 +239,21 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
             <Grid4>
               <Card2 active={mode === 'local'} onClick={() => setMode('local')} icon="users" title="Local" desc="2 jugadores en el mismo equipo" />
               <Card2 active={mode === 'ai'} onClick={() => setMode('ai')} icon="cpu" title="Contra IA" desc="Desafía al motor" badge="Beta" />
-              <Card2 active={mode === 'online'} onClick={() => setMode('online')} icon="globe" title="Online" desc="Multijugador en línea" badge="Beta" />
-              <Card2 active={mode === 'private'} onClick={() => setMode('private')} icon="lock" title="Sala privada" desc="Con código de invitación" />
+              {FEATURES.MULTIPLAYER ? (
+                <>
+                  <Card2 active={mode === 'online'} onClick={() => setMode('online')} icon="globe" title="Online" desc="Multijugador en línea" badge="Beta" />
+                  <Card2 active={mode === 'private'} onClick={() => setMode('private')} icon="lock" title="Sala privada" desc="Con código de invitación" />
+                </>
+              ) : (
+                <>
+                  <div style={{ opacity: 0.4, pointerEvents: 'none' }}>
+                    <Card2 active={false} onClick={() => {}} icon="globe" title="Online" desc="Multijugador en línea" badge="No disponible" />
+                  </div>
+                  <div style={{ opacity: 0.4, pointerEvents: 'none' }}>
+                    <Card2 active={false} onClick={() => {}} icon="lock" title="Sala privada" desc="Con código de invitación" badge="No disponible" />
+                  </div>
+                </>
+              )}
             </Grid4>
           </Section>
 
