@@ -11,6 +11,7 @@ import { useAchievements } from './hooks/useAchievements';
 import { useReplays } from './hooks/useReplays';
 import * as audioService from './services/audioService';
 import type { ScreenName, ModalName, Player } from './types/game';
+import type { RemoteMatch } from './types/match.types';
 import { ViewDashboard } from './pages/HomePage';
 import { ViewGame } from './pages/GamePage';
 import { ViewLobby } from './pages/LobbyPage';
@@ -25,8 +26,10 @@ import { ViewAchievements } from './pages/AchievementsPage';
 import { ViewRanking } from './pages/RankingPage';
 import { ViewFriends } from './pages/FriendsPage';
 import { ViewReplays } from './pages/ReplaysPage';
+import { ViewDeveloperAgents } from './pages/DeveloperAgentsPage';
 import { MetaBoard } from './components/game/MetaBoard';
 import { buildSampleGame } from './utils/boardUtils';
+import { FEATURES } from './config/features';
 
 const NAV = [
   { k: 'home', icon: 'home', label: 'Inicio', screen: 'home' },
@@ -38,11 +41,14 @@ const NAV = [
   { k: 'profile', icon: 'user', label: 'Mi perfil', screen: 'profile' },
 ] as const;
 
-const NAV_SUB = [
-  { k: 'achievements', icon: 'trophy', label: 'Logros', screen: 'achievements' as const },
-  { k: 'ranking', icon: 'medal', label: 'Ranking global', screen: 'ranking' as const },
-  { k: 'friends', icon: 'users', label: 'Amigos', screen: 'friends' as const },
-  { k: 'replays', icon: 'replay', label: 'Replays guardados', screen: 'replays' as const },
+const NAV_SUB: Array<{ k: string; icon: string; label: string; screen: ScreenName }> = [
+  { k: 'achievements', icon: 'trophy', label: 'Logros', screen: 'achievements' },
+  { k: 'ranking', icon: 'medal', label: 'Ranking global', screen: 'ranking' },
+  { k: 'friends', icon: 'users', label: 'Amigos', screen: 'friends' },
+  { k: 'replays', icon: 'replay', label: 'Replays guardados', screen: 'replays' },
+  ...(FEATURES.DEVELOPER_MODE
+    ? [{ k: 'developer-agents', icon: 'cpu', label: 'Agentes Python', screen: 'developer-agents' as ScreenName }]
+    : []),
 ];
 
 function getScreenTitle(s: ScreenName): string {
@@ -61,6 +67,7 @@ function getScreenTitle(s: ScreenName): string {
     ranking: 'Ranking global',
     friends: 'Amigos',
     replays: 'Replays guardados',
+    'developer-agents': 'Agentes Python',
   };
   return map[s];
 }
@@ -81,6 +88,7 @@ function getScreenIcon(s: ScreenName): string {
     ranking: 'medal',
     friends: 'users',
     replays: 'replay',
+    'developer-agents': 'cpu',
   };
   return map[s];
 }
@@ -551,6 +559,9 @@ const SAMPLE_GAME = buildSampleGame();
 function App() {
   const [screen, setScreen] = useState<ScreenName>('home');
   const [modal, setModal] = useState<ModalName>(null);
+  // When non-null, ViewProfile renders the public profile of this user id
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+  const [replayMatch, setReplayMatch] = useState<RemoteMatch | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const { game, playerX, playerO, timeX, timeO, initialTime, mode } = useGameStore();
@@ -612,7 +623,17 @@ function App() {
     document.documentElement.style.setProperty('--duration-normal', reduceMotion ? '0ms' : '250ms');
   }, [reduceMotion]);
 
-  const navigate = (s: ScreenName) => setScreen(s);
+  const navigate = (s: ScreenName) => {
+    // Clear the viewed user id when leaving the profile screen
+    if (s !== 'profile') setViewingUserId(null);
+    setScreen(s);
+  };
+
+  // Navigate to another player's public profile
+  const navigateToProfile = (userId: string) => {
+    setViewingUserId(userId);
+    setScreen('profile');
+  };
 
   useEffect(() => {
     if (modal === 'victory' || modal === 'defeat' || modal === 'draw') {
@@ -919,13 +940,24 @@ function App() {
             />
           )}
           {screen === 'profile' && (
-            <ViewProfile navigate={navigate} blueColor={accentColor} redColor={oColor} />
+            <ViewProfile
+              navigate={navigate}
+              blueColor={accentColor}
+              redColor={oColor}
+              userId={viewingUserId ?? undefined}
+            />
           )}
           {screen === 'history' && (
             <ViewHistory navigate={navigate} blueColor={accentColor} redColor={oColor} />
           )}
           {screen === 'replay' && (
-            <ViewReplay game={game} navigate={navigate} blueColor={accentColor} redColor={oColor} />
+            <ViewReplay
+              navigate={navigate}
+              blueColor={accentColor}
+              redColor={oColor}
+              matchId={replayMatch?.id ?? null}
+              matchMeta={replayMatch}
+            />
           )}
           {screen === 'settings' && (
             <ViewSettings navigate={navigate} blueColor={accentColor} />
@@ -937,10 +969,18 @@ function App() {
             <ViewRanking navigate={navigate} blueColor={accentColor} redColor={oColor} />
           )}
           {screen === 'friends' && (
-            <ViewFriends navigate={navigate} blueColor={accentColor} redColor={oColor} />
+            <ViewFriends navigate={navigate} blueColor={accentColor} redColor={oColor} navigateToProfile={navigateToProfile} />
           )}
           {screen === 'replays' && (
-            <ViewReplays navigate={navigate} blueColor={accentColor} redColor={oColor} />
+            <ViewReplays
+              navigate={navigate}
+              blueColor={accentColor}
+              redColor={oColor}
+              onSelectReplay={(match) => setReplayMatch(match)}
+            />
+          )}
+          {screen === 'developer-agents' && FEATURES.DEVELOPER_MODE && (
+            <ViewDeveloperAgents navigate={navigate} />
           )}
 
           {(modal === 'victory' || modal === 'defeat' || modal === 'draw') && (

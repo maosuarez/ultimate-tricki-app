@@ -7,6 +7,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { useNetworkStore } from '../stores/network.store';
 import { playMove, playSubBoardCapture } from '../services/audioService';
 import { useAIAgent } from '../hooks/useAIAgent';
+import { useSaveCompletedMatch } from '../hooks/useSaveCompletedMatch';
 
 interface ViewGameProps {
   blueColor: string;
@@ -177,6 +178,9 @@ export function ViewGame({
 
   const { requestMove, isReady: aiReady } = useAIAgent(aiAgentId ?? null);
   const [isThinking, setIsThinking] = React.useState(false);
+
+  // Persist match to Supabase when the game ends.
+  useSaveCompletedMatch(gameWinner);
 
   // Play sounds on each move — detects new sub-board captures vs plain moves
   const historyLength = game.history.length;

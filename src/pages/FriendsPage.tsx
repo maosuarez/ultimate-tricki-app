@@ -8,13 +8,16 @@ interface ViewFriendsProps {
   navigate: (screen: ScreenName) => void;
   blueColor: string;
   redColor: string;
+  /** Navigate to a public profile by user id */
+  navigateToProfile?: (userId: string) => void;
 }
 
 interface FriendRowProps {
   friend: FriendEntry;
+  onViewProfile?: (userId: string) => void;
 }
 
-function FriendRow({ friend }: FriendRowProps): React.ReactElement {
+function FriendRow({ friend, onViewProfile }: FriendRowProps): React.ReactElement {
   return (
     <div className="row" style={{
       padding: '10px 12px', borderRadius: 8,
@@ -32,7 +35,13 @@ function FriendRow({ friend }: FriendRowProps): React.ReactElement {
       {friend.onlineStatus === 'online' && (
         <button className="btn sm" title="Invitar a partida"><Icon name="play" size={13}/> Invitar</button>
       )}
-      <button className="btn icon ghost" title="Ver perfil"><Icon name="user" size={14}/></button>
+      <button
+        className="btn icon ghost"
+        title="Ver perfil"
+        onClick={() => onViewProfile?.(friend.profile.id)}
+      >
+        <Icon name="user" size={14}/>
+      </button>
       <button className="btn icon ghost" title="Más opciones"><Icon name="more" size={14}/></button>
     </div>
   );
@@ -58,7 +67,7 @@ function Section({ title, count, children }: SectionProps): React.ReactElement {
   );
 }
 
-export function ViewFriends({ navigate, blueColor: _blueColor, redColor: _redColor }: ViewFriendsProps): React.ReactElement {
+export function ViewFriends({ navigate, blueColor: _blueColor, redColor: _redColor, navigateToProfile }: ViewFriendsProps): React.ReactElement {
   const [showAdd, setShowAdd] = React.useState(false);
   const [addInput, setAddInput] = React.useState('');
   const [search, setSearch]     = React.useState('');
@@ -180,17 +189,17 @@ export function ViewFriends({ navigate, blueColor: _blueColor, redColor: _redCol
           <>
             {filtOnline.length > 0 && (
               <Section title="En línea ahora" count={filtOnline.length}>
-                {filtOnline.map(f => <FriendRow key={f.friendship.id} friend={f} />)}
+                {filtOnline.map(f => <FriendRow key={f.friendship.id} friend={f} onViewProfile={navigateToProfile} />)}
               </Section>
             )}
             {filtAway.length > 0 && (
               <Section title="Ausentes" count={filtAway.length}>
-                {filtAway.map(f => <FriendRow key={f.friendship.id} friend={f} />)}
+                {filtAway.map(f => <FriendRow key={f.friendship.id} friend={f} onViewProfile={navigateToProfile} />)}
               </Section>
             )}
             {filtOffline.length > 0 && (
               <Section title="Sin conexión" count={filtOffline.length}>
-                {filtOffline.map(f => <FriendRow key={f.friendship.id} friend={f} />)}
+                {filtOffline.map(f => <FriendRow key={f.friendship.id} friend={f} onViewProfile={navigateToProfile} />)}
               </Section>
             )}
             {filtered.length === 0 && search.trim() !== '' && (

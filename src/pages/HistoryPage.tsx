@@ -1,6 +1,9 @@
 import React from 'react';
 import { Icon, Avatar } from '../components/ui';
 import type { ScreenName } from '../types/game';
+import { useMatchHistory } from '@/hooks/useMatchHistory';
+import { useUserStore } from '@/stores/userStore';
+import type { RemoteMatch, MatchResult, MatchMode } from '@/types/match.types';
 
 interface ViewHistoryProps {
   navigate: (screen: ScreenName) => void;
@@ -8,115 +11,219 @@ interface ViewHistoryProps {
   redColor: string;
 }
 
-type MatchResult = 'win' | 'loss' | 'draw';
+// ─── Display helpers ──────────────────────────────────────────────────────────
 
-interface MatchEntry {
-  id: string;
-  op: string;
-  elo: number;
-  result: MatchResult;
-  mode: string;
-  moves: number;
-  eloDelta: string;
-  time: string;
-  when: string;
+type LocalResult = 'victoria' | 'derrota' | 'empate';
+
+function toLocalResult(result: MatchResult, userId: string, match: RemoteMatch): LocalResult {
+  if (result === 'draw' || result === 'abandoned') return 'empate';
+  const userIsX = match.playerXId === userId;
+  if (result === 'x_wins') return userIsX ? 'victoria' : 'derrota';
+  // o_wins
+  return userIsX ? 'derrota' : 'victoria';
 }
 
-const OPS = ['maverick','kira_99','noahz','somnia','baltz','rin','IA · Difícil','IA · Experto'];
-const RESULTS: MatchResult[] = ['win','loss','win','draw','win','win','loss','win'];
-const MODES = ['Blitz','Rápida','Casual','Blitz','Ultra','Blitz','Rápida','Casual'];
-const ELO_DELTAS = ['+18','-15','+22','0','+12','+9','-19','+24'];
+const RESULT_CHIP: Record<LocalResult, string> = {
+  victoria: 'chip green',
+  derrota:  'chip red',
+  empate:   'chip',
+};
 
-function buildMatches(): MatchEntry[] {
-  return Array.from({ length: 18 }, (_, i) => ({
-    id: `m${i}`,
-    op: OPS[i % 8],
-    elo: 1700 + ((i * 47) % 300),
-    result: RESULTS[i % 8],
-    mode: MODES[i % 8],
-    moves: 28 + ((i * 11) % 50),
-    eloDelta: ELO_DELTAS[i % 8],
-    time: `${10 + (i % 14)}m`,
-    when: i < 3 ? 'hoy' : i < 8 ? 'ayer' : 'esta semana',
-  }));
+const RESULT_LABEL: Record<LocalResult, string> = {
+  victoria: 'Victoria',
+  derrota:  'Derrota',
+  empate:   'Empate',
+};
+
+const MODE_LABEL: Record<MatchMode, string> = {
+  online: 'Online',
+  ai:     'vs IA',
+  local:  'Local',
+};
+
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
+
+function formatDateGroup(iso: string): string {
+  const date  = new Date(iso);
+  const today = new Date();
+  const diff  = today.setHours(0, 0, 0, 0) - date.setHours(0, 0, 0, 0);
+  const days  = Math.floor(diff / 86_400_000);
+  if (days === 0) return 'hoy';
+  if (days === 1) return 'ayer';
+  if (days < 7)  return 'esta semana';
+  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// ─── Row component ────────────────────────────────────────────────────────────
+
+interface MatchRowProps {
+  match: RemoteMatch;
+  userId: string;
+  onReplay: () => void;
+}
+
+function MatchRow({ match, userId, onReplay }: MatchRowProps): React.ReactElement {
+  const isAI        = match.mode === 'ai';
+  const opponentName = match.playerXId === userId ? match.playerOName : match.playerXName;
+  const localResult  = toLocalResult(match.result, userId, match);
+  const eloChange    = match.playerXId === userId ? match.ratingChangeX : match.ratingChangeO;
+  const eloSign      = eloChange > 0 ? '+' : '';
+  const eloColor     =
+    eloChange > 0 ? 'var(--green)' : eloChange < 0 ? 'var(--red)' : 'var(--text-3)';
+
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: '8px 32px 1fr 120px 100px 80px 80px 90px',
+      gap: 12,
+      padding: '11px 14px 11px 0',
+      alignItems: 'center',
+      borderBottom: '1px solid var(--border)',
+      fontSize: 13,
+    }}>
+      {/* Result stripe */}
+      <div style={{
+        width: 4, height: 28, marginLeft: 14,
+        background:
+          localResult === 'victoria' ? 'var(--green)' :
+          localResult === 'derrota'  ? 'var(--red)'   : 'var(--text-3)',
+        borderRadius: 2,
+      }} />
+
+      {/* Avatar */}
+      <Avatar
+        name={opponentName}
+        size={26}
+        gradient={isAI ? 'linear-gradient(140deg,#52525B,#27272A)' : undefined}
+      />
+
+      {/* Opponent + date */}
+      <div>
+        <div style={{ fontWeight: 600 }}>vs {opponentName}</div>
+        <div className="t-cap t-mono">{formatDate(match.endedAt)}</div>
+      </div>
+
+      {/* Result chip */}
+      <span className={RESULT_CHIP[localResult]}>
+        {RESULT_LABEL[localResult]}
+      </span>
+
+      {/* Mode */}
+      <div className="t-cap t-mono">{MODE_LABEL[match.mode]}</div>
+
+      {/* Moves */}
+      <div className="t-cap t-mono">{match.totalMoves} mov.</div>
+
+      {/* Duration */}
+      <div className="t-cap t-mono">{formatDuration(match.durationSeconds)}</div>
+
+      {/* Actions */}
+      <div className="row" style={{ gap: 4, justifyContent: 'flex-end' }}>
+        {!isAI && (
+          <div className="t-mono" style={{ fontSize: 12, color: eloColor, fontWeight: 600, marginRight: 6 }}>
+            {eloSign}{eloChange}
+          </div>
+        )}
+        <button className="btn sm ghost" onClick={onReplay}>
+          <Icon name="replay" size={13} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function ViewHistory({ navigate, blueColor: _blueColor, redColor: _redColor }: ViewHistoryProps): React.ReactElement {
-  const matches = buildMatches();
+  const { matches, loading, error } = useMatchHistory();
+  const session = useUserStore((s) => s.session);
+  const userId  = session?.userId ?? '';
+
+  // Group consecutive rows by date label
+  const grouped: Array<{ label: string; match: RemoteMatch }> = matches.map((m) => ({
+    label: formatDateGroup(m.endedAt),
+    match: m,
+  }));
 
   return (
     <div className="fade-in" style={{ padding: 28, overflow: 'auto', height: '100%' }}>
+
+      {/* Header */}
       <div className="row" style={{ marginBottom: 16 }}>
-
         <div style={{ marginBottom: 24 }}>
-                <button className="btn ghost sm" onClick={() => navigate('home')}><Icon name="arrow-l" size={14}/> Inicio</button>
-                <div className="t-h1" style={{ marginTop: 12 }}>Historial</div>
-                <div className="muted" style={{ fontSize: 13 }}>{matches.length} partidas · filtra por modo, resultado u oponente</div>
-        </div>
-        <div className="spacer"/>
-        <button className="btn"><Icon name="database" size={14}/> Exportar PGN</button>
-      </div>
-
-      {/* Filter bar */}
-      <div className="card" style={{ padding: 12, marginBottom: 12 }}>
-        <div className="row" style={{ gap: 8 }}>
-          <div className="row" style={{ padding: '6px 10px', background: 'var(--surface-2)', borderRadius: 8, border: '1px solid var(--border)', flex: 1, gap: 8 }}>
-            <Icon name="search" size={14} style={{ color: 'var(--text-3)' }}/>
-            <input style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 13, width: '100%' }} placeholder="Buscar oponente..." />
+          <button className="btn ghost sm" onClick={() => navigate('home')}>
+            <Icon name="arrow-l" size={14} /> Inicio
+          </button>
+          <div className="t-h1" style={{ marginTop: 12 }}>Historial</div>
+          <div className="muted" style={{ fontSize: 13 }}>
+            {loading
+              ? 'Cargando partidas…'
+              : `${matches.length} partida${matches.length !== 1 ? 's' : ''} · filtra por modo, resultado u oponente`}
           </div>
-          {[['all','Todas'],['win','Victorias'],['loss','Derrotas'],['draw','Empates'],['ranked','Ranked'],['ai','vs IA']].map(([f, l], i) => (
-            <button key={f} className="btn sm" style={{
-              background: i === 0 ? 'var(--card-hi)' : 'transparent',
-              border: i === 0 ? '1px solid var(--border-hi)' : '1px solid transparent',
-              color: i === 0 ? 'var(--text)' : 'var(--text-2)',
-            }}>{l}</button>
-          ))}
         </div>
+        <div className="spacer" />
+        <button className="btn">
+          <Icon name="database" size={14} /> Exportar PGN
+        </button>
       </div>
 
-      <div className="card" style={{ overflow: 'hidden' }}>
-        {matches.map((m, i) => {
-          const isNewDay = i === 0 || matches[i - 1].when !== m.when;
-          const eloColor = m.eloDelta.startsWith('+') ? 'var(--green)' : m.eloDelta.startsWith('-') ? 'var(--red)' : 'var(--text-3)';
-          return (
-            <React.Fragment key={m.id}>
-              {isNewDay && (
-                <div style={{ padding: '8px 16px', background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-                  <span className="t-tag">{m.when}</span>
-                </div>
-              )}
-              <div style={{
-                display: 'grid', gridTemplateColumns: '8px 32px 1fr 120px 100px 80px 80px 90px',
-                gap: 12, padding: '11px 14px 11px 0', alignItems: 'center',
-                borderBottom: '1px solid var(--border)', fontSize: 13,
-              }}>
-                <div style={{
-                  width: 4, height: 28, marginLeft: 14,
-                  background: m.result === 'win' ? 'var(--green)' : m.result === 'loss' ? 'var(--red)' : 'var(--text-3)',
-                  borderRadius: 2,
-                }}/>
-                <Avatar name={m.op} size={26} gradient={m.op.includes('IA') ? 'linear-gradient(140deg,#52525B,#27272A)' : undefined} />
-                <div>
-                  <div style={{ fontWeight: 600 }}>vs {m.op}</div>
-                  <div className="t-cap t-mono">ELO {m.elo}</div>
-                </div>
-                <span className={`chip ${m.result === 'win' ? 'green' : m.result === 'loss' ? 'red' : ''}`}>
-                  {m.result === 'win' ? 'Victoria' : m.result === 'loss' ? 'Derrota' : 'Empate'}
-                </span>
-                <div className="t-cap t-mono">{m.mode}</div>
-                <div className="t-cap t-mono">{m.moves} mov.</div>
-                <div className="t-mono" style={{ fontSize: 12, color: eloColor, fontWeight: 600 }}>
-                  {m.eloDelta}
-                </div>
-                <div className="row" style={{ gap: 4, justifyContent: 'flex-end' }}>
-                  <button className="btn sm ghost" onClick={() => navigate('replay')}><Icon name="replay" size={13}/></button>
-                  <button className="btn icon ghost"><Icon name="more" size={14}/></button>
-                </div>
-              </div>
-            </React.Fragment>
-          );
-        })}
-      </div>
+      {/* Loading state */}
+      {loading && (
+        <div className="t-cap" style={{ textAlign: 'center', padding: 48 }}>
+          Cargando historial…
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && !loading && (
+        <div className="t-cap" style={{ textAlign: 'center', padding: 48, color: 'var(--red)' }}>
+          Error al cargar historial: {error}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && !error && matches.length === 0 && (
+        <div style={{ textAlign: 'center', color: 'var(--text-3)', padding: '64px 0', fontSize: 13 }}>
+          <Icon name="history" size={32} style={{ marginBottom: 12, opacity: 0.3 }} />
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Sin partidas guardadas</div>
+          <div>Juega tu primera partida para verla aquí.</div>
+        </div>
+      )}
+
+      {/* Match list */}
+      {!loading && !error && matches.length > 0 && (
+        <div className="card" style={{ overflow: 'hidden' }}>
+          {grouped.map((item, i) => {
+            const isNewGroup = i === 0 || grouped[i - 1].label !== item.label;
+            return (
+              <React.Fragment key={item.match.id}>
+                {isNewGroup && (
+                  <div style={{
+                    padding: '8px 16px',
+                    background: 'var(--surface-2)',
+                    borderBottom: '1px solid var(--border)',
+                  }}>
+                    <span className="t-tag">{item.label}</span>
+                  </div>
+                )}
+                <MatchRow
+                  match={item.match}
+                  userId={userId}
+                  onReplay={() => navigate('replay')}
+                />
+              </React.Fragment>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

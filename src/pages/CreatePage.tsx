@@ -3,6 +3,8 @@ import { Icon, Kbd } from '../components/ui';
 import type { ScreenName } from '../types/game';
 import { useGameStore } from '../stores/gameStore';
 import { FEATURES } from '../config/features';
+import { useActiveMatchGuard } from '@/hooks/useActiveMatchGuard';
+import { ActiveMatchBlockedModal } from '@/components/ui/ActiveMatchBlockedModal';
 
 interface ViewCreateProps {
   navigate: (screen: ScreenName) => void;
@@ -122,6 +124,7 @@ function SummaryRow({ k, v }: SummaryRowProps): React.ReactElement {
 }
 
 export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Jugador', onCreateRoom }: ViewCreateProps): React.ReactElement {
+  const { isBlocked, closeBlockedModal } = useActiveMatchGuard('create');
   const [mode, setMode] = React.useState<GameMode>('local');
   const [diff, setDiff] = React.useState<AIDiff>('hard');
   const [time, setTime] = React.useState<TimeControl>('blitz');
@@ -224,7 +227,12 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
     .slice(0, 5);
 
   return (
-    <div className="fade-in" style={{ padding: 28, overflow: 'auto', height: '100%' }}>
+    <div className="fade-in" style={{ padding: 28, overflow: 'auto', height: '100%', position: 'relative' }}>
+      <ActiveMatchBlockedModal
+        isOpen={isBlocked}
+        onClose={closeBlockedModal}
+        navigate={navigate}
+      />
       <div style={{ maxWidth: 1080, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <button className="btn ghost sm" onClick={() => navigate('home')}><Icon name="arrow-l" size={14}/> Inicio</button>

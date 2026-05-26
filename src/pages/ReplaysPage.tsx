@@ -9,6 +9,7 @@ interface ViewReplaysProps {
   navigate: (screen: ScreenName) => void;
   blueColor: string;
   redColor: string;
+  onSelectReplay: (match: RemoteMatch) => void;
 }
 
 type LocalResult = 'victoria' | 'derrota' | 'empate';
@@ -46,7 +47,7 @@ function formatDate(iso: string): string {
 interface ReplayCardProps {
   match: RemoteMatch;
   userId: string;
-  onView: () => void;
+  onView: (match: RemoteMatch) => void;
 }
 
 function ReplayCard({ match, userId, onView }: ReplayCardProps): React.ReactElement {
@@ -93,7 +94,7 @@ function ReplayCard({ match, userId, onView }: ReplayCardProps): React.ReactElem
 
       {/* Actions */}
       <div className="row" style={{ gap: 6, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
-        <button className="btn primary sm" style={{ flex: 1 }} onClick={onView}>
+        <button className="btn primary sm" style={{ flex: 1 }} onClick={() => onView(match)}>
           <Icon name="play" size={13}/> Ver replay
         </button>
         <button className="btn ghost sm"><Icon name="copy" size={13}/> Renombrar</button>
@@ -103,7 +104,7 @@ function ReplayCard({ match, userId, onView }: ReplayCardProps): React.ReactElem
   );
 }
 
-export function ViewReplays({ navigate, blueColor: _blueColor, redColor: _redColor }: ViewReplaysProps): React.ReactElement {
+export function ViewReplays({ navigate, blueColor: _blueColor, redColor: _redColor, onSelectReplay }: ViewReplaysProps): React.ReactElement {
   const { replays, loading, error } = useReplays();
   const session = useUserStore((s) => s.session);
   const userId = session?.userId ?? '';
@@ -151,7 +152,7 @@ export function ViewReplays({ navigate, blueColor: _blueColor, redColor: _redCol
                   key={r.id}
                   match={r}
                   userId={userId}
-                  onView={() => navigate('replay')}
+                  onView={(match) => { onSelectReplay(match); navigate('replay'); }}
                 />
               ))}
             </div>

@@ -3,6 +3,7 @@ import { Icon, Avatar, Kbd } from '../components/ui';
 import { Mark } from '../components/ui/Mark';
 import type { Player, ScreenName } from '../types/game';
 import { useNetworkStore } from '../stores/network.store';
+import { useMatchStore } from '@/stores/matchStore';
 
 interface ViewLobbyProps {
   navigate: (screen: ScreenName) => void;
@@ -64,8 +65,10 @@ function SettingRow({ icon, label, value }: SettingRowProps): React.ReactElement
 }
 
 export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame, onSendChat }: ViewLobbyProps): React.ReactElement {
-  const { roomCode, players, isHost, phase, chatItems, status, mySide, myName } = useNetworkStore();
+  const { roomCode, players, isHost, phase, chatItems, status, mySide, myName, reset: resetNetwork } = useNetworkStore();
+  const leaveLobby = useMatchStore((s) => s.leaveLobby);
   const [chatInput, setChatInput] = React.useState('');
+  const [copied, setCopied] = React.useState(false);
   const chatRef = React.useRef<HTMLDivElement>(null);
 
   const myPlayer = players.find(p => p.name === myName);
@@ -94,7 +97,18 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
   };
 
   const copyCode = () => {
-    if (roomCode) void navigator.clipboard.writeText(roomCode);
+    if (!roomCode) return;
+    void navigator.clipboard.writeText(roomCode).then(() => {
+      setCopied(true);
+      const timer = window.setTimeout(() => setCopied(false), 2000);
+      return timer;
+    });
+  };
+
+  const handleLeaveLobby = () => {
+    leaveLobby();
+    resetNetwork();
+    navigate('home');
   };
 
   const isConnecting = status === 'connecting' || status === 'idle';
@@ -210,28 +224,45 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
     <div className="fade-in" style={{ padding: 28, display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, height: '100%', overflow: 'hidden' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, overflow: 'auto', minHeight: 0 }}>
         <div>
-          <div className="row" style={{ marginBottom: 12 }}>
-            <button className="btn ghost sm" onClick={() => navigate('home')}><Icon name="arrow-l" size={14}/> Inicio</button>
+          {/* Top bar: room code + leave button in same row */}
+          <div className="row" style={{ marginBottom: 12, gap: 12 }}>
+            {roomCode ? (
+              <div className="card" style={{ padding: '10px 14px', display: 'flex', gap: 14, alignItems: 'center' }}>
+                <div>
+                  <div className="t-tag">Código de sala</div>
+                  <div className="t-mono" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '.16em' }}>{roomCode}</div>
+                </div>
+                <button
+                  className="btn sm"
+                  title={copied ? 'Copiado' : 'Copiar código'}
+                  aria-label={copied ? 'Código copiado al portapapeles' : 'Copiar código de sala'}
+                  onClick={copyCode}
+                  style={{ minWidth: 80, transition: 'color 150ms ease-out' }}
+                >
+                  {copied ? (
+                    <><Icon name="check" size={14}/> Copiado!</>
+                  ) : (
+                    <Icon name="copy" size={14}/>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div />
+            )}
+
             <div className="spacer" />
-            {!isHost && (
-              <button
-                className={`btn${isReady ? '' : ' primary'}`}
-                onClick={() => onReady?.(!isReady)}
-              >
-                {isReady ? 'No listo' : 'Estoy listo'}
-              </button>
-            )}
-            {isHost && (
-              <button
-                className="btn primary lg"
-                disabled={!allReady}
-                onClick={() => onStartGame?.()}
-              >
-                <Icon name="play" size={14}/> Iniciar partida <Kbd>Enter</Kbd>
-              </button>
-            )}
+
+            <button
+              className="btn danger sm"
+              aria-label="Abandonar sala y volver al inicio"
+              onClick={handleLeaveLobby}
+            >
+              <Icon name="x" size={14}/> Abandonar sala
+            </button>
           </div>
-          <div className="row">
+
+          {/* Title + status chips + host/ready controls */}
+          <div className="row" style={{ alignItems: 'flex-start' }}>
             <div>
               <div className="t-h1" style={{ marginBottom: 4 }}>
                 {isConnecting ? 'Conectando a la sala…' : `Sala de ${myName}`}
@@ -249,14 +280,22 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
               </div>
             </div>
             <div className="spacer" />
-            {roomCode && (
-              <div className="card" style={{ padding: '10px 14px', display: 'flex', gap: 14, alignItems: 'center' }}>
-                <div>
-                  <div className="t-tag">Código de sala</div>
-                  <div className="t-mono" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '.16em' }}>{roomCode}</div>
-                </div>
-                <button className="btn sm" title="Copiar" onClick={copyCode}><Icon name="copy" size={14}/></button>
-              </div>
+            {!isHost && (
+              <button
+                className={`btn${isReady ? '' : ' primary'}`}
+                onClick={() => onReady?.(!isReady)}
+              >
+                {isReady ? 'No listo' : 'Estoy listo'}
+              </button>
+            )}
+            {isHost && (
+              <button
+                className="btn primary lg"
+                disabled={!allReady}
+                onClick={() => onStartGame?.()}
+              >
+                <Icon name="play" size={14}/> Iniciar partida <Kbd>Enter</Kbd>
+              </button>
             )}
           </div>
         </div>

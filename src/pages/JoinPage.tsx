@@ -3,6 +3,8 @@ import { Icon, Avatar } from '../components/ui';
 import type { ScreenName } from '../types/game';
 import type { RoomListing } from '../types/api.types';
 import { supabaseService } from '../services/supabase.service';
+import { useActiveMatchGuard } from '@/hooks/useActiveMatchGuard';
+import { ActiveMatchBlockedModal } from '@/components/ui/ActiveMatchBlockedModal';
 
 // Valid chars: A-Z excluding I and O, plus 2-9
 const VALID_CHAR_RE = /^[A-HJ-NP-Z2-9]$/;
@@ -183,6 +185,7 @@ function relativeTime(isoStr: string): string {
 }
 
 export function ViewJoin({ navigate, blueColor: _blueColor, redColor: _redColor, playerName = 'Jugador', onJoinRoom }: ViewJoinProps): React.ReactElement {
+  const { isBlocked, closeBlockedModal } = useActiveMatchGuard('join');
   const [filter, setFilter] = React.useState<FilterKey>('all');
   const [joinCode, setJoinCode] = React.useState('');
   const [search, setSearch] = React.useState('');
@@ -219,7 +222,12 @@ export function ViewJoin({ navigate, blueColor: _blueColor, redColor: _redColor,
   });
 
   return (
-    <div className="fade-in" style={{ padding: 28, overflow: 'auto', height: '100%' }}>
+    <div className="fade-in" style={{ padding: 28, overflow: 'auto', height: '100%', position: 'relative' }}>
+      <ActiveMatchBlockedModal
+        isOpen={isBlocked}
+        onClose={closeBlockedModal}
+        navigate={navigate}
+      />
       <div className="row" style={{ marginBottom: 18 }}>
         <button className="btn ghost sm" onClick={() => navigate('home')}><Icon name="arrow-l" size={14}/> Inicio</button>
         <div className="spacer"/>
