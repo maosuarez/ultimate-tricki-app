@@ -22,7 +22,6 @@ supabase/.temp
 
 # Claude Code agents and skills (auto-generated, cached locally)
 .agents/
-.claude/skills/
 
 # Editor directories and files
 .vscode/*
