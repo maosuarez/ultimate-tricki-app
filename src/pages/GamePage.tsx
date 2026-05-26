@@ -6,7 +6,7 @@ import { useGameStore } from '../stores/gameStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useNetworkStore } from '../stores/network.store';
 import { playMove, playSubBoardCapture } from '../services/audioService';
-import { agentService } from '../services/agentService';
+import { useAIAgent } from '../hooks/useAIAgent';
 
 interface ViewGameProps {
   blueColor: string;
@@ -175,8 +175,7 @@ export function ViewGame({
   const chatRef = React.useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = React.useState<'Eventos' | 'Movimientos'>('Movimientos');
 
-  const aiSessionIdRef = React.useRef<string | null>(null);
-  const isRequestingRef = React.useRef(false);
+  const { requestMove, isReady: aiReady } = useAIAgent(aiAgentId ?? null);
   const [isThinking, setIsThinking] = React.useState(false);
 
   // Play sounds on each move — detects new sub-board captures vs plain moves
@@ -197,36 +196,16 @@ export function ViewGame({
     }
   }, [historyLength, game.sb]);
 
-  // AI session lifecycle — open when game starts with an agent, close on cleanup
-  React.useEffect(() => {
-    if (!aiAgentId) return;
-
-    let sessionId: string | null = null;
-
-    agentService.startSession(aiAgentId).then((id) => {
-      sessionId = id;
-      aiSessionIdRef.current = id;
-    });
-
-    return () => {
-      if (sessionId) agentService.stopSession(sessionId);
-      aiSessionIdRef.current = null;
-    };
-  }, [aiAgentId]);
-
   // Trigger bot move when it's the bot's turn
   React.useEffect(() => {
-    const sessionId = aiSessionIdRef.current;
-    if (!sessionId) return;
+    if (!aiReady || !requestMove) return;
     if (!botSide) return;
     if (game.turn !== botSide) return;
     if (gameWinner !== null) return;
-    if (isRequestingRef.current) return;
 
-    isRequestingRef.current = true;
     setIsThinking(true);
 
-    agentService.requestMove(sessionId, game, 2000)
+    requestMove(game, 2000)
       .then((mv) => {
         makeMove(mv.sb, mv.cell);
       })
@@ -234,10 +213,9 @@ export function ViewGame({
         console.error('[AI] request_move failed:', err);
       })
       .finally(() => {
-        isRequestingRef.current = false;
         setIsThinking(false);
       });
-  }, [game.turn, game, botSide, gameWinner, makeMove]);
+  }, [game.turn, game, botSide, gameWinner, makeMove, aiReady, requestMove]);
 
   // Tick the active player's clock — stops when game is over
   React.useEffect(() => {

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { wsService } from '@/services/wsService';
+import { supabaseService } from '@/services/supabase.service';
 import { useNetworkStore } from '@/stores/network.store';
 import { useGameStore } from '@/stores/gameStore';
 import type { ScreenName } from '@/types/game';
@@ -8,7 +9,16 @@ function nowTime(): string {
   return new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function useOnlineGame(navigate: (s: ScreenName) => void): void {
+export function useOnlineGame(navigate: (s: ScreenName) => void): {
+  createRoom: (playerName: string, isPublic?: boolean, hostElo?: number, timeControl?: string) => string;
+  joinRoom: (code: string, playerName: string) => void;
+  sendReady: (ready: boolean) => void;
+  sendStartGame: () => void;
+  sendMove: (sb: number, cell: number) => void;
+  sendChat: (text: string) => void;
+  cleanupRoom: () => void;
+  reset: () => void;
+} {
   const setStatus = useNetworkStore((s) => s.setStatus);
   const setPlayers = useNetworkStore((s) => s.setPlayers);
   const addPlayer = useNetworkStore((s) => s.addPlayer);
@@ -35,7 +45,6 @@ export function useOnlineGame(navigate: (s: ScreenName) => void): void {
           addPlayer(joiner);
           addChatItem('sistema', `${msg.name} se unió`, nowTime(), 'sys');
           if (isHost) {
-            // Broadcast current room state so joiner gets the full picture
             const updatedPlayers = [...players, joiner];
             wsService.send({ type: 'room_state', players: updatedPlayers });
           }
@@ -83,4 +92,73 @@ export function useOnlineGame(navigate: (s: ScreenName) => void): void {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const createRoom = (playerName: string, isPublic = false, hostElo = 0, timeControl = 'blitz'): string => {
+    const code = useNetworkStore.getState().createRoom(playerName, isPublic, hostElo, timeControl);
+    void (async () => {
+      try {
+        await wsService.connect(playerName);
+        wsService.joinGroup(code);
+        wsService.send({ type: 'host_joined', name: playerName, side: 'X' });
+        if (isPublic) {
+          await supabaseService.rooms.create({ code, hostName: playerName, hostElo, timeControl });
+        }
+      } catch (err) {
+        console.error('[WS] createRoom failed:', err);
+        useNetworkStore.getState().setStatus('error');
+      }
+    })();
+    return code;
+  };
+
+  const joinRoom = (code: string, playerName: string): void => {
+    useNetworkStore.getState().joinRoom(code, playerName);
+    void (async () => {
+      try {
+        await wsService.connect(playerName);
+        wsService.joinGroup(code);
+        wsService.send({ type: 'player_joined', name: playerName });
+      } catch (err) {
+        console.error('[WS] joinRoom failed:', err);
+        useNetworkStore.getState().setStatus('error');
+      }
+    })();
+  };
+
+  const sendReady = (ready: boolean): void => {
+    const { myName } = useNetworkStore.getState();
+    useNetworkStore.getState().sendReady(ready);
+    wsService.send({ type: 'ready', name: myName, ready });
+  };
+
+  const sendStartGame = (): void => {
+    wsService.send({ type: 'game_started' });
+  };
+
+  const sendMove = (sb: number, cell: number): void => {
+    wsService.send({ type: 'move', sb, cell });
+  };
+
+  const sendChat = (text: string): void => {
+    const { myName } = useNetworkStore.getState();
+    const t = nowTime();
+    useNetworkStore.getState().sendChat(text);
+    wsService.send({ type: 'chat', from: myName, text, t });
+  };
+
+  const cleanupRoom = (): void => {
+    const { roomCode, isHost } = useNetworkStore.getState();
+    if (isHost && roomCode) {
+      void supabaseService.rooms.delete(roomCode).catch((err) => {
+        console.warn('[Supabase] cleanupRoom failed:', err);
+      });
+    }
+  };
+
+  const reset = (): void => {
+    wsService.disconnect();
+    useNetworkStore.getState().reset();
+  };
+
+  return { createRoom, joinRoom, sendReady, sendStartGame, sendMove, sendChat, cleanupRoom, reset };
 }

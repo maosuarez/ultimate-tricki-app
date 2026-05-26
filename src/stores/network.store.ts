@@ -2,8 +2,6 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { ConnectionStatus, GamePhase, RoomPlayer } from '@/types/network.types';
 import type { Player } from '@/types/game';
-import { wsService } from '@/services/wsService';
-import { supabaseService } from '@/services/supabase.service';
 
 function generateCode(): string {
   const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -82,7 +80,7 @@ export const useNetworkStore = create<NetworkStore>()(
       })),
       setPendingRemoteMove: (move) => set({ pendingRemoteMove: move }),
 
-      createRoom: (playerName, isPublic = false, hostElo = 0, timeControl = 'blitz') => {
+      createRoom: (playerName, _isPublic = false, hostElo = 0, _timeControl = 'blitz') => {
         const code = generateCode();
         const hostPlayer: import('@/types/network.types').RoomPlayer = {
           name: playerName, side: 'X', isHost: true, ready: false, elo: hostElo, ping: 0,
@@ -96,26 +94,6 @@ export const useNetworkStore = create<NetworkStore>()(
           roomCode: code,
           players: [hostPlayer],
         });
-
-        void (async () => {
-          try {
-            await wsService.connect(playerName);
-            wsService.joinGroup(code);
-            wsService.send({ type: 'host_joined', name: playerName, side: 'X' });
-            if (isPublic) {
-              await supabaseService.rooms.create({
-                code,
-                hostName: playerName,
-                hostElo,
-                timeControl,
-              });
-            }
-          } catch (err) {
-            console.error('[WS] createRoom failed:', err);
-            set({ status: 'error' });
-          }
-        })();
-
         return code;
       },
 
@@ -128,51 +106,30 @@ export const useNetworkStore = create<NetworkStore>()(
           status: 'connecting',
           roomCode: code,
         });
-
-        void (async () => {
-          try {
-            await wsService.connect(playerName);
-            wsService.joinGroup(code);
-            wsService.send({ type: 'player_joined', name: playerName });
-          } catch (err) {
-            console.error('[WS] joinRoom failed:', err);
-            set({ status: 'error' });
-          }
-        })();
       },
 
       sendReady: (ready) => {
         const { myName } = get();
-        wsService.send({ type: 'ready', name: myName, ready });
         set((s) => ({
           players: s.players.map(p => p.name === myName ? { ...p, ready } : p),
         }));
       },
 
-      sendStartGame: () => wsService.send({ type: 'game_started' }),
+      sendStartGame: () => {},
 
-      cleanupRoom: () => {
-        const { roomCode, isHost } = get();
-        if (isHost && roomCode) {
-          void supabaseService.rooms.delete(roomCode).catch((err) => {
-            console.warn('[Supabase] cleanupRoom failed:', err);
-          });
-        }
-      },
+      cleanupRoom: () => {},
 
-      sendMove: (sb, cell) => wsService.send({ type: 'move', sb, cell }),
+      sendMove: (_sb, _cell) => {},
 
       sendChat: (text) => {
         const { myName } = get();
         const t = nowTime();
-        wsService.send({ type: 'chat', from: myName, text, t });
         set((s) => ({
           chatItems: [...s.chatItems, { from: myName, text, t, kind: 'msg' }],
         }));
       },
 
       reset: () => {
-        wsService.disconnect();
         set(INITIAL);
       },
     }),

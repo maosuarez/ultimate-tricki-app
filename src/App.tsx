@@ -3,7 +3,6 @@ import { useSettingsStore } from './stores/settingsStore';
 import { Icon, Avatar, Kbd, ProgressBar } from './components/ui';
 import { useGameStore } from './stores/gameStore';
 import { useUserStore } from './stores/userStore';
-import { useNetworkStore } from './stores/network.store';
 import { useCurrentUser } from './hooks/useCurrentUser';
 import { useAudioSync } from './hooks/useAudioSync';
 import { useOnlineGame } from './hooks/useOnlineGame';
@@ -622,9 +621,7 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
-  useOnlineGame(navigate);
-
-  const { createRoom, joinRoom, sendReady, sendStartGame, sendMove, sendChat, cleanupRoom } = useNetworkStore();
+  const { createRoom, joinRoom, sendReady, sendStartGame, sendMove, sendChat, cleanupRoom } = useOnlineGame(navigate);
 
   const showTabs = screen === 'profile';
 
