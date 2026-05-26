@@ -29,7 +29,7 @@ import { ViewReplays } from './pages/ReplaysPage';
 import { ViewDeveloperAgents } from './pages/DeveloperAgentsPage';
 import { MetaBoard } from './components/game/MetaBoard';
 import { buildSampleGame } from './utils/boardUtils';
-import { FEATURES } from './config/features';
+import { useDeveloperMode } from './config/features';
 
 const NAV = [
   { k: 'home', icon: 'home', label: 'Inicio', screen: 'home' },
@@ -41,14 +41,11 @@ const NAV = [
   { k: 'profile', icon: 'user', label: 'Mi perfil', screen: 'profile' },
 ] as const;
 
-const NAV_SUB: Array<{ k: string; icon: string; label: string; screen: ScreenName }> = [
+const NAV_SUB_BASE: Array<{ k: string; icon: string; label: string; screen: ScreenName }> = [
   { k: 'achievements', icon: 'trophy', label: 'Logros', screen: 'achievements' },
   { k: 'ranking', icon: 'medal', label: 'Ranking global', screen: 'ranking' },
   { k: 'friends', icon: 'users', label: 'Amigos', screen: 'friends' },
   { k: 'replays', icon: 'replay', label: 'Replays guardados', screen: 'replays' },
-  ...(FEATURES.DEVELOPER_MODE
-    ? [{ k: 'developer-agents', icon: 'cpu', label: 'Agentes Python', screen: 'developer-agents' as ScreenName }]
-    : []),
 ];
 
 function getScreenTitle(s: ScreenName): string {
@@ -103,7 +100,7 @@ interface ResultModalProps {
   timeX: number;
   timeO: number;
   initialTime: number;
-  mode: 'local' | 'ai' | 'online';
+  mode: 'local' | 'ai' | 'online' | 'custom_agent';
   onClose: () => void;
   blueColor: string;
   redColor: string;
@@ -158,7 +155,7 @@ const ResultModal: FC<ResultModalProps> = ({ kind, playerX, playerO, xCaptures, 
   const iconMap = { victory: '🏆', defeat: '💀', draw: '🤝' } as const;
   const titleMap = { victory: 'Victoria', defeat: 'Derrota', draw: 'Empate' } as const;
 
-  const modeLabel = mode === 'online' ? 'Ranked' : mode === 'ai' ? 'vs IA' : 'Local';
+  const modeLabel = mode === 'online' ? 'Ranked' : (mode === 'ai' || mode === 'custom_agent') ? 'vs Agente' : 'Local';
   const subtitle = kind === 'draw' ? 'Sin cambios · Modo local' : `Partida terminada · ${modeLabel}`;
 
   const fmt = (s: number): string =>
@@ -578,6 +575,15 @@ function App() {
 
   const { colorX: accentColor, colorO: oColor, theme, reduceMotion, density } = useSettingsStore();
 
+  const isDeveloperMode = useDeveloperMode();
+
+  const NAV_SUB: Array<{ k: string; icon: string; label: string; screen: ScreenName }> = [
+    ...NAV_SUB_BASE,
+    ...(isDeveloperMode
+      ? [{ k: 'developer-agents', icon: 'cpu', label: 'Agentes Python', screen: 'developer-agents' as ScreenName }]
+      : []),
+  ];
+
   const { authChecked, session, isGuest, guestName } = useCurrentUser();
   const { profile, signIn, signUp, enterAsGuest, signOut } = useUserStore();
 
@@ -979,7 +985,7 @@ function App() {
               onSelectReplay={(match) => setReplayMatch(match)}
             />
           )}
-          {screen === 'developer-agents' && FEATURES.DEVELOPER_MODE && (
+          {screen === 'developer-agents' && isDeveloperMode && (
             <ViewDeveloperAgents navigate={navigate} />
           )}
 

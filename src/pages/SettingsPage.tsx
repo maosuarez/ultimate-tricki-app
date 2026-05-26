@@ -13,7 +13,7 @@ export interface ViewSettingsProps {
 
 // ─── Section definition ───────────────────────────────────────────────────────
 
-type SectionKey = 'apariencia' | 'audio' | 'juego' | 'a11y' | 'account';
+type SectionKey = 'apariencia' | 'audio' | 'juego' | 'a11y' | 'account' | 'developer';
 
 interface SectionDef {
   k: SectionKey;
@@ -27,6 +27,7 @@ const SECTIONS: SectionDef[] = [
   { k: 'juego',      icon: 'gamepad',       label: 'Juego' },
   { k: 'a11y',       icon: 'accessibility', label: 'Accesibilidad' },
   { k: 'account',    icon: 'user',          label: 'Cuenta' },
+  { k: 'developer',  icon: 'cpu',           label: 'Desarrollador' },
 ];
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
@@ -390,6 +391,62 @@ function SettingsAccount({ navigate }: SettingsAccountProps): React.ReactElement
   );
 }
 
+// ─── Desarrollador ───────────────────────────────────────────────────────────
+
+interface SettingsDeveloperProps {
+  navigate: (screen: ScreenName) => void;
+}
+
+function SettingsDeveloper({ navigate }: SettingsDeveloperProps): React.ReactElement {
+  const { developerMode, setDeveloperMode } = useSettingsStore();
+
+  return (
+    <div>
+      <div className="t-h1" style={{ marginBottom: 18 }}>Desarrollador</div>
+      <SettingsGroup title="Modo desarrollador">
+        <SettingsRow
+          label="Activar modo desarrollador"
+          desc="Habilita herramientas avanzadas: agentes Python, logs de depuración, y más opciones a futuro."
+          control={<Toggle on={developerMode} onChange={setDeveloperMode} />}
+        />
+        {developerMode && (
+          <div style={{ padding: '8px 18px 10px', borderBottom: '1px solid var(--border)' }}>
+            <span className="chip amber" style={{ fontSize: 11 }}>
+              Las herramientas de desarrollo pueden afectar el rendimiento.
+            </span>
+          </div>
+        )}
+        {developerMode && (
+          <SettingsRow
+            label="Agentes Python"
+            desc="Carga y juega contra agentes escritos en Python"
+            last
+            control={
+              <button className="btn sm" onClick={() => navigate('developer-agents')}>
+                Abrir
+              </button>
+            }
+          />
+        )}
+        {!developerMode && (
+          <SettingsRow
+            label="Agentes Python"
+            desc="Activa el modo desarrollador para acceder a esta herramienta"
+            last
+            control={
+              <button className="btn sm" disabled style={{ opacity: 0.4, cursor: 'not-allowed' }}>
+                Abrir
+              </button>
+            }
+          />
+        )}
+      </SettingsGroup>
+
+      {/* Futuras opciones de desarrollador aquí */}
+    </div>
+  );
+}
+
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 export function ViewSettings({ navigate }: ViewSettingsProps): React.ReactElement {
@@ -431,6 +488,7 @@ export function ViewSettings({ navigate }: ViewSettingsProps): React.ReactElemen
         {section === 'juego'      && <SettingsJuego />}
         {section === 'a11y'       && <SettingsA11y />}
         {section === 'account'    && <SettingsAccount navigate={navigate} />}
+        {section === 'developer'  && <SettingsDeveloper navigate={navigate} />}
       </div>
     </div>
   );

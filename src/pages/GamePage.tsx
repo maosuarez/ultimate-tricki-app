@@ -5,9 +5,12 @@ import type { ScreenName, ModalName, MoveHistory } from '../types/game';
 import { useGameStore } from '../stores/gameStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useNetworkStore } from '../stores/network.store';
+import { useMatchStore } from '../stores/matchStore';
 import { playMove, playSubBoardCapture } from '../services/audioService';
 import { useAIAgent } from '../hooks/useAIAgent';
+import { useAgentGame } from '../hooks/useAgentGame';
 import { useSaveCompletedMatch } from '../hooks/useSaveCompletedMatch';
+import { pythonAgentService } from '../services/pythonAgentService';
 
 interface ViewGameProps {
   blueColor: string;
@@ -172,12 +175,20 @@ export function ViewGame({
   const { game, makeMove, playerX, playerO, chatMessages, gameWinner, isActive, timeX, timeO, tickTimer, aiAgentId, botSide, mode } = useGameStore();
   const { showCoordinates, highlightLastMove } = useSettingsStore();
   const { mySide, pendingRemoteMove, setPendingRemoteMove } = useNetworkStore();
+  const agentSessionId = useMatchStore((s) => s.agentSessionId);
+  const clearAgentSession = useMatchStore((s) => s.clearAgentSession);
 
   const chatRef = React.useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = React.useState<'Eventos' | 'Movimientos'>('Movimientos');
 
-  const { requestMove, isReady: aiReady } = useAIAgent(aiAgentId ?? null);
-  const [isThinking, setIsThinking] = React.useState(false);
+  // Built-in Flattie agent
+  const { requestMove, isReady: aiReady } = useAIAgent(mode === 'ai' ? (aiAgentId ?? null) : null);
+  const [isThinkingBuiltin, setIsThinkingBuiltin] = React.useState(false);
+
+  // Python custom agent
+  const { isThinking: isThinkingAgent } = useAgentGame(mode === 'custom_agent' ? agentSessionId : null);
+
+  const isThinking = isThinkingBuiltin || isThinkingAgent;
 
   // Persist match to Supabase when the game ends.
   useSaveCompletedMatch(gameWinner);
@@ -200,14 +211,14 @@ export function ViewGame({
     }
   }, [historyLength, game.sb]);
 
-  // Trigger bot move when it's the bot's turn
+  // Trigger built-in Flattie move when it's the bot's turn (mode === 'ai')
   React.useEffect(() => {
     if (!aiReady || !requestMove) return;
     if (!botSide) return;
     if (game.turn !== botSide) return;
     if (gameWinner !== null) return;
 
-    setIsThinking(true);
+    setIsThinkingBuiltin(true);
 
     requestMove(game, 2000)
       .then((mv) => {
@@ -217,9 +228,22 @@ export function ViewGame({
         console.error('[AI] request_move failed:', err);
       })
       .finally(() => {
-        setIsThinking(false);
+        setIsThinkingBuiltin(false);
       });
   }, [game.turn, game, botSide, gameWinner, makeMove, aiReady, requestMove]);
+
+  // Clean up the Python agent session when a custom_agent game ends
+  React.useEffect(() => {
+    if (mode !== 'custom_agent') return;
+    if (gameWinner === null) return;
+    if (!agentSessionId) return;
+
+    pythonAgentService.endSession(agentSessionId).catch((err: unknown) => {
+      console.error('[useAgentGame] endSession failed:', err);
+    });
+    clearAgentSession();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameWinner, mode]);
 
   // Tick the active player's clock — stops when game is over
   React.useEffect(() => {

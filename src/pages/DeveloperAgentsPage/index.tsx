@@ -1,22 +1,17 @@
 import { useState, useEffect, type FC } from 'react';
-import { openPath } from '@tauri-apps/plugin-opener';
+import { open, save } from '@tauri-apps/plugin-dialog';
 import { Icon } from '../../components/ui';
 import type { ScreenName } from '../../types/game';
 import type { PythonAgentInfo } from '../../types/agent.types';
 import { pythonAgentService } from '../../services/pythonAgentService';
+import { useGameStore } from '../../stores/gameStore';
+import { useMatchStore } from '../../stores/matchStore';
+import { useUserStore } from '../../stores/userStore';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 export interface ViewDeveloperAgentsProps {
   navigate: (screen: ScreenName) => void;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function agentsDirPath(): string {
-  // This path is informational only (displayed to the user).
-  // The actual resolution is handled by Rust via dirs-next.
-  return '~/.tricki/agents/';
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -26,6 +21,22 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openingFolder, setOpeningFolder] = useState(false);
+  const [startingAgent, setStartingAgent] = useState<string | null>(null);
+  const [copyingTemplate, setCopyingTemplate] = useState(false);
+  const [templateCopied, setTemplateCopied] = useState(false);
+  const [savedTemplatePath, setSavedTemplatePath] = useState<string | null>(null);
+  const [loadingAgent, setLoadingAgent] = useState(false);
+  const [disabledPaths, setDisabledPaths] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem('tricki_disabled_agents') ?? '[]'));
+    } catch {
+      return new Set();
+    }
+  });
+
+  const startAgentGame = useGameStore((s) => s.startAgentGame);
+  const setAgentSession = useMatchStore((s) => s.setAgentSession);
+  const displayName = useUserStore((s) => s.profile?.displayName ?? 'Jugador');
 
   const loadAgents = () => {
     setLoading(true);
@@ -44,16 +55,94 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
     loadAgents();
   }, []);
 
+  const handlePlay = (agent: PythonAgentInfo) => {
+    if (startingAgent) return;
+    setStartingAgent(agent.path);
+    setError(null);
+
+    pythonAgentService
+      .startSession(agent.path)
+      .then((sessionId) => {
+        setAgentSession(sessionId, agent.name);
+        startAgentGame(displayName, agent.name, 300);
+        navigate('game');
+      })
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(`No se pudo iniciar el agente: ${msg}`);
+      })
+      .finally(() => {
+        setStartingAgent(null);
+      });
+  };
+
   const handleOpenFolder = async () => {
     setOpeningFolder(true);
     try {
-      // Open the agents directory in the OS file manager.
-      await openPath(agentsDirPath());
-    } catch {
-      // Fallback: the folder path is shown in the UI so the user can open it manually.
+      await pythonAgentService.openAgentsFolder();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(`No se pudo abrir la carpeta: ${msg}`);
     } finally {
       setOpeningFolder(false);
     }
+  };
+
+  const handleCopyTemplate = async () => {
+    if (copyingTemplate) return;
+    setCopyingTemplate(true);
+    try {
+      const destPath = await save({
+        defaultPath: 'agent-template.py',
+        filters: [{ name: 'Python', extensions: ['py'] }],
+      });
+      if (!destPath) return;
+      const written = await pythonAgentService.saveTemplate(destPath);
+      setSavedTemplatePath(written);
+      setTemplateCopied(true);
+      setTimeout(() => {
+        setTemplateCopied(false);
+        setSavedTemplatePath(null);
+      }, 3000);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(`No se pudo guardar la plantilla: ${msg}`);
+    } finally {
+      setCopyingTemplate(false);
+    }
+  };
+
+  const handleLoadAgent = async () => {
+    if (loadingAgent) return;
+    setLoadingAgent(true);
+    try {
+      const selected = await open({
+        filters: [{ name: 'Python', extensions: ['py'] }],
+        multiple: false,
+      });
+      if (!selected) return;
+      const sourcePath = typeof selected === 'string' ? selected : selected[0];
+      await pythonAgentService.importAgent(sourcePath);
+      loadAgents();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(`No se pudo cargar el agente: ${msg}`);
+    } finally {
+      setLoadingAgent(false);
+    }
+  };
+
+  const toggleAgent = (path: string) => {
+    setDisabledPaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      localStorage.setItem('tricki_disabled_agents', JSON.stringify([...next]));
+      return next;
+    });
   };
 
   return (
@@ -86,7 +175,38 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
         >
           <Icon name="plus" size={13} /> Abrir carpeta de agentes
         </button>
+        <button
+          className="btn ghost sm"
+          onClick={() => void handleCopyTemplate()}
+          disabled={copyingTemplate}
+        >
+          <Icon name={templateCopied ? 'check' : 'download'} size={13} />
+          {templateCopied ? 'Plantilla lista' : 'Descargar plantilla'}
+        </button>
+        <button
+          className="btn ghost sm"
+          onClick={() => void handleLoadAgent()}
+          disabled={loadingAgent}
+        >
+          <Icon name="plus" size={13} /> Cargar agente
+        </button>
       </div>
+
+      {savedTemplatePath && (
+        <div
+          style={{
+            background: 'rgba(34,197,94,0.08)',
+            border: '1px solid rgba(34,197,94,0.3)',
+            borderRadius: 8,
+            padding: '10px 14px',
+            color: 'var(--green)',
+            fontSize: 13,
+            marginBottom: 16,
+          }}
+        >
+          Plantilla guardada en {savedTemplatePath}
+        </div>
+      )}
 
       {/* Agent list */}
       {loading && (
@@ -118,7 +238,14 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
       {!loading && agents.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {agents.map((agent) => (
-            <AgentCard key={agent.path} agent={agent} />
+            <AgentCard
+              key={agent.path}
+              agent={agent}
+              onPlay={handlePlay}
+              isStarting={startingAgent === agent.path}
+              disabled={disabledPaths.has(agent.path)}
+              onToggle={toggleAgent}
+            />
           ))}
         </div>
       )}
@@ -214,9 +341,13 @@ const EmptyState: FC = () => (
 
 interface AgentCardProps {
   agent: PythonAgentInfo;
+  onPlay: (agent: PythonAgentInfo) => void;
+  isStarting: boolean;
+  disabled: boolean;
+  onToggle: (path: string) => void;
 }
 
-const AgentCard: FC<AgentCardProps> = ({ agent }) => (
+const AgentCard: FC<AgentCardProps> = ({ agent, onPlay, isStarting, disabled, onToggle }) => (
   <div
     style={{
       background: 'var(--surface)',
@@ -226,6 +357,7 @@ const AgentCard: FC<AgentCardProps> = ({ agent }) => (
       display: 'flex',
       alignItems: 'center',
       gap: 14,
+      opacity: disabled ? 0.5 : 1,
     }}
   >
     <div
@@ -244,7 +376,12 @@ const AgentCard: FC<AgentCardProps> = ({ agent }) => (
       🐍
     </div>
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ fontWeight: 700, fontSize: 14 }}>{agent.name}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontWeight: 700, fontSize: 14 }}>{agent.name}</span>
+        {disabled && (
+          <span className="chip" style={{ fontSize: 10, opacity: 0.8 }}>Desactivado</span>
+        )}
+      </div>
       <div
         className="t-cap"
         style={{
@@ -258,8 +395,18 @@ const AgentCard: FC<AgentCardProps> = ({ agent }) => (
         {agent.path}
       </div>
     </div>
-    <button className="btn primary sm" disabled title="Próximamente: iniciar partida contra este agente">
-      Jugar
+    <button
+      className="btn ghost sm"
+      onClick={() => onToggle(agent.path)}
+    >
+      {disabled ? 'Activar' : 'Desactivar'}
+    </button>
+    <button
+      className="btn primary sm"
+      onClick={() => onPlay(agent)}
+      disabled={isStarting || disabled}
+    >
+      {isStarting ? 'Iniciando...' : 'Jugar'}
     </button>
   </div>
 );
