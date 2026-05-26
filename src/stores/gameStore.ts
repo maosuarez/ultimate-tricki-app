@@ -21,7 +21,7 @@ interface GameStore {
   initialTime: number;
   aiAgentId: string | null;
   botSide: 'X' | 'O' | null;
-  mode: 'local' | 'ai' | 'online';
+  mode: 'local' | 'ai' | 'online' | 'custom_agent';
   setGame: (game: GameState) => void;
   resetGame: () => void;
   makeMove: (sb: number, cell: number) => void;
@@ -29,6 +29,7 @@ interface GameStore {
   startLocalGame: (nameX: string, nameO: string, timeSecs?: number) => void;
   startAiGame: (nameX: string, agentId: string, timeSecs: number) => void;
   startOnlineGame: (nameX: string, nameO: string, timeSecs?: number) => void;
+  startAgentGame: (nameX: string, agentName: string, timeSecs?: number) => void;
   tickTimer: () => void;
 }
 
@@ -46,11 +47,11 @@ export const useGameStore = create<GameStore>()(
       initialTime: 300,
       aiAgentId: null,
       botSide: null,
-      mode: 'local' as const,
+      mode: 'local' as 'local' | 'ai' | 'online' | 'custom_agent',
 
       setGame: (game) => set({ game }),
 
-      resetGame: () => set({ game: initGame(), gameWinner: null, chatMessages: [], isActive: false, timeX: 300, timeO: 300, initialTime: 300, aiAgentId: null, botSide: null, mode: 'local' }),
+      resetGame: () => set({ game: initGame(), gameWinner: null, chatMessages: [], isActive: false, timeX: 300, timeO: 300, initialTime: 300, aiAgentId: null, botSide: null, mode: 'local' as 'local' | 'ai' | 'online' | 'custom_agent' }),
 
       makeMove: (sb, cell) => {
         const { game } = get();
@@ -160,6 +161,22 @@ export const useGameStore = create<GameStore>()(
           aiAgentId: null,
           botSide: null,
           mode: 'online',
+        }),
+
+      startAgentGame: (nameX, agentName, timeSecs) =>
+        set({
+          game: initGame(),
+          playerX: nameX,
+          playerO: agentName,
+          chatMessages: [],
+          gameWinner: null,
+          isActive: true,
+          timeX: timeSecs ?? 300,
+          timeO: timeSecs ?? 300,
+          initialTime: timeSecs ?? 300,
+          aiAgentId: null,
+          botSide: 'O',
+          mode: 'custom_agent',
         }),
 
       tickTimer: () => {

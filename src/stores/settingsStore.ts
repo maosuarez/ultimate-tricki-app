@@ -26,6 +26,9 @@ interface SettingsState {
   // Accesibilidad
   reduceMotion: boolean;
 
+  // Desarrollador
+  developerMode: boolean;
+
   // Acciones
   setTheme: (v: SettingsState['theme']) => void;
   setDensity: (v: SettingsState['density']) => void;
@@ -39,6 +42,7 @@ interface SettingsState {
   setHighlightLastMove: (v: boolean) => void;
   setConfirmResign: (v: boolean) => void;
   setReduceMotion: (v: boolean) => void;
+  setDeveloperMode: (v: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -62,6 +66,8 @@ export const useSettingsStore = create<SettingsState>()(
 
         reduceMotion: false,
 
+        developerMode: false,
+
         // Setters
         setTheme: (theme) => set({ theme }),
         setDensity: (density) => set({ density }),
@@ -75,6 +81,7 @@ export const useSettingsStore = create<SettingsState>()(
         setHighlightLastMove: (highlightLastMove) => set({ highlightLastMove }),
         setConfirmResign: (confirmResign) => set({ confirmResign }),
         setReduceMotion: (reduceMotion) => set({ reduceMotion }),
+        setDeveloperMode: (developerMode) => set({ developerMode }),
       }),
       { name: 'tricki-settings' }
     ),

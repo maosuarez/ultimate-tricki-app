@@ -35,6 +35,8 @@ interface MatchStore {
   activeMatch: MatchMetadata | null;
   isLoading: boolean;
   error: string | null;
+  agentSessionId: string | null;
+  agentName: string | null;
 
   // Actions
   createMatch: (metadata: Omit<MatchMetadata, 'id' | 'startedAt' | 'endedAt' | 'result'>) => void;
@@ -44,6 +46,8 @@ interface MatchStore {
   leaveLobby: () => void;
   cleanup: () => void;
   setError: (error: string | null) => void;
+  setAgentSession: (sessionId: string, agentName: string) => void;
+  clearAgentSession: () => void;
 }
 
 export const useMatchStore = create<MatchStore>()(
@@ -53,6 +57,8 @@ export const useMatchStore = create<MatchStore>()(
       activeMatch: null,
       isLoading: false,
       error: null,
+      agentSessionId: null,
+      agentName: null,
 
       // Create a new match (local, AI, or online)
       createMatch: (metadata) => {
@@ -101,6 +107,14 @@ export const useMatchStore = create<MatchStore>()(
       // Error state
       setError: (error) => {
         set({ error });
+      },
+
+      setAgentSession: (sessionId, name) => {
+        set({ agentSessionId: sessionId, agentName: name });
+      },
+
+      clearAgentSession: () => {
+        set({ agentSessionId: null, agentName: null });
       },
     }),
     { name: 'MatchStore' }

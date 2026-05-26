@@ -8,6 +8,7 @@ import type { Player } from '@/types/game';
 import type { MatchResult } from '@/types/match.types';
 import { useGameStore } from '@/stores/gameStore';
 import { useUserStore } from '@/stores/userStore';
+import { useMatchStore } from '@/stores/matchStore';
 import { supabaseService } from '@/services/supabase.service';
 
 // Maps the last segment of a builtin agent ID to a readable Spanish label.
@@ -36,6 +37,7 @@ export function useSaveCompletedMatch(gameWinner: Player | 'draw' | null): void 
   const { game, playerX, playerO, aiAgentId, mode, initialTime, timeX, timeO } =
     useGameStore();
   const { session, profile, isGuest } = useUserStore();
+  const agentName = useMatchStore((s) => s.agentName);
 
   // Guards against double-saves on StrictMode double-invocation or modal re-renders.
   const savedRef = useRef(false);
@@ -53,9 +55,9 @@ export function useSaveCompletedMatch(gameWinner: Player | 'draw' | null): void 
     // Guests have no Supabase account — skip silently.
     if (isGuest || !session) return;
 
-    // Only persist AI and local matches here. Online matches are persisted by
-    // the server when the room ends.
-    if (mode !== 'ai' && mode !== 'local') return;
+    // Only persist AI, local, and custom_agent matches here. Online matches are
+    // persisted by the server when the room ends.
+    if (mode !== 'ai' && mode !== 'local' && mode !== 'custom_agent') return;
 
     savedRef.current = true;
 
@@ -66,11 +68,19 @@ export function useSaveCompletedMatch(gameWinner: Player | 'draw' | null): void 
     const durationSeconds = elapsedX + elapsedO;
 
     const playerOName =
-      mode === 'ai' && aiAgentId ? agentIdToDisplayName(aiAgentId) : playerO;
+      mode === 'ai' && aiAgentId
+        ? agentIdToDisplayName(aiAgentId)
+        : mode === 'custom_agent' && agentName
+          ? agentName
+          : playerO;
+
+    // custom_agent matches are stored with mode 'ai' so the existing Supabase
+    // schema (which only knows 'ai' | 'local' | 'online') continues to work.
+    const persistedMode = mode === 'custom_agent' ? 'ai' : mode;
 
     const matchData = {
       id:              crypto.randomUUID(),
-      mode,
+      mode:            persistedMode,
       playerXId:       profile?.id ?? null,
       playerOId:       mode === 'ai' ? null : null, // local O is never a registered user here
       playerXName:     playerX,
