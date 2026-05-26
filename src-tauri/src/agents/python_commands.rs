@@ -33,6 +33,13 @@ pub fn list_python_agents() -> Result<Vec<PythonAgentInfo>, String> {
     super::loader::list_agents()
 }
 
+/// Copies the bundled agent template to `~/.tricki/agents/agent-template.py`.
+/// Returns the absolute path to the written file.
+#[tauri::command]
+pub fn copy_agent_template() -> Result<String, String> {
+    super::loader::copy_template()
+}
+
 /// Spawns a Python agent subprocess for the file at `agent_path`.
 /// Returns an opaque session ID to be used in subsequent calls.
 #[tauri::command]
@@ -69,6 +76,56 @@ pub fn python_agent_make_move(
     process
         .request_move(&game_state, Duration::from_secs(5))
         .map_err(|e| e.to_string())
+}
+
+/// Returns the absolute path to `~/.tricki/agents/` as a string.
+#[tauri::command]
+pub fn get_agents_dir_path() -> Result<String, String> {
+    super::loader::get_agents_dir_path()
+}
+
+/// Opens `~/.tricki/agents/` in the OS file manager.
+#[tauri::command]
+pub fn open_agents_folder() -> Result<(), String> {
+    let dir = super::loader::get_agents_dir_path()?;
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&dir)
+            .spawn()
+            .map_err(|e| format!("failed to open folder: {e}"))?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&dir)
+            .spawn()
+            .map_err(|e| format!("failed to open folder: {e}"))?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&dir)
+            .spawn()
+            .map_err(|e| format!("failed to open folder: {e}"))?;
+    }
+
+    Ok(())
+}
+
+/// Copies a `.py` file from `source_path` into `~/.tricki/agents/`.
+/// Returns the metadata of the imported agent.
+#[tauri::command]
+pub fn import_python_agent(source_path: String) -> Result<PythonAgentInfo, String> {
+    super::loader::import_agent(&source_path)
+}
+
+/// Writes the bundled agent template to `dest_path` chosen by the user.
+/// Returns the absolute path written.
+#[tauri::command]
+pub fn save_agent_template(dest_path: String) -> Result<String, String> {
+    super::loader::save_template_to(&dest_path)
 }
 
 /// Terminates the Python agent subprocess and removes the session.

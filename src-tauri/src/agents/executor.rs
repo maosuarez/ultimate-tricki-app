@@ -75,6 +75,11 @@ pub struct AgentProcess {
     _wrapper_file: tempfile::NamedTempFile,
 }
 
+// Safety: AgentProcess is always accessed through a Mutex<HashMap<_, AgentProcess>> in
+// PythonAgentRegistry. The OS handles inside Child/ChildStdin/ChildStdout are safe to
+// transfer between threads when access is exclusive (guaranteed by the Mutex).
+unsafe impl Send for AgentProcess {}
+
 impl AgentProcess {
     /// Spawns the Python wrapper for the agent at `agent_path`.
     pub fn spawn(agent_path: &str) -> Result<Self, ExecutorError> {
