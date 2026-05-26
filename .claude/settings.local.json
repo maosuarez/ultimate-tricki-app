@@ -1,4 +1,16 @@
 {
+  "permissions": {
+    "allow": [
+      "mcp__code-review-graph__semantic_search_nodes_tool",
+      "Bash(pnpm tsc *)",
+      "mcp__code-review-graph__get_architecture_overview_tool",
+      "Bash(pnpm exec *)",
+      "Bash(cargo build *)",
+      "mcp__code-review-graph__build_or_update_graph_tool",
+      "mcp__code-review-graph__detect_changes_tool",
+      "Bash(git commit -m ' *)"
+    ]
+  },
   "enabledMcpjsonServers": [
     "code-review-graph"
   ]
