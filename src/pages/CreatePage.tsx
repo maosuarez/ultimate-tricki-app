@@ -6,6 +6,8 @@ import { useGameStore } from '../stores/gameStore';
 interface ViewCreateProps {
   navigate: (screen: ScreenName) => void;
   blueColor: string;
+  playerName?: string;
+  onCreateRoom?: (playerName: string, isPublic: boolean, hostElo: number, timeControl: string) => string;
 }
 
 type GameMode = 'local' | 'ai' | 'online' | 'private';
@@ -118,7 +120,7 @@ function SummaryRow({ k, v }: SummaryRowProps): React.ReactElement {
   );
 }
 
-export function ViewCreate({ navigate, blueColor: _blueColor }: ViewCreateProps): React.ReactElement {
+export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Jugador', onCreateRoom }: ViewCreateProps): React.ReactElement {
   const [mode, setMode] = React.useState<GameMode>('local');
   const [diff, setDiff] = React.useState<AIDiff>('hard');
   const [time, setTime] = React.useState<TimeControl>('blitz');
@@ -169,6 +171,12 @@ export function ViewCreate({ navigate, blueColor: _blueColor }: ViewCreateProps)
     } else if (mode === 'ai') {
       startAiGame('Jugador 1', 'builtin.flat_mc.easy', secs);
       navigate('game');
+    } else if (mode === 'online' && onCreateRoom) {
+      onCreateRoom(playerName, true, 0, time);
+      navigate('lobby');
+    } else if (mode === 'private' && onCreateRoom) {
+      onCreateRoom(playerName, false, 0, time);
+      navigate('lobby');
     }
   };
 
@@ -176,7 +184,7 @@ export function ViewCreate({ navigate, blueColor: _blueColor }: ViewCreateProps)
   const diffLabel = diff === 'easy' ? 'Fácil' : diff === 'med' ? 'Medio' : diff === 'hard' ? 'Difícil' : 'Experto';
   const timeLabel = time === 'blitz' ? '5+3' : time === 'rapid' ? '10+5' : time === 'none' ? 'sin límite' : '7+4';
 
-  const isDisabled = mode === 'online' || mode === 'private';
+  const isDisabled = (mode === 'online' && !onCreateRoom) || (mode === 'private' && !onCreateRoom);
   const timeStep = mode === 'ai' ? 3 : 2;
 
   const handleSaveTemplate = () => {
@@ -210,21 +218,22 @@ export function ViewCreate({ navigate, blueColor: _blueColor }: ViewCreateProps)
 
   return (
     <div className="fade-in" style={{ padding: 28, overflow: 'auto', height: '100%' }}>
+      <div style={{ maxWidth: 1080, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <button className="btn ghost sm" onClick={() => navigate('home')}><Icon name="arrow-l" size={14}/> Inicio</button>
         <div className="t-h1" style={{ marginTop: 12 }}>Crear partida</div>
         <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Configura tu partida.</div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 18, maxWidth: 1080 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 18 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* MODO */}
           <Section title="Modo de juego" step={1}>
             <Grid4>
               <Card2 active={mode === 'local'} onClick={() => setMode('local')} icon="users" title="Local" desc="2 jugadores en el mismo equipo" />
               <Card2 active={mode === 'ai'} onClick={() => setMode('ai')} icon="cpu" title="Contra IA" desc="Desafía al motor" badge="Beta" />
-              <Card2 active={mode === 'online'} onClick={() => setMode('online')} icon="globe" title="Online" desc="Multijugador en línea" badge="Ranked" />
-              <Card2 active={mode === 'private'} onClick={() => setMode('private')} icon="lock" title="Sala privada" desc="Con código de invitación" badge="Próximamente" />
+              <Card2 active={mode === 'online'} onClick={() => setMode('online')} icon="globe" title="Online" desc="Multijugador en línea" badge="Beta" />
+              <Card2 active={mode === 'private'} onClick={() => setMode('private')} icon="lock" title="Sala privada" desc="Con código de invitación" />
             </Grid4>
           </Section>
 
@@ -288,7 +297,7 @@ export function ViewCreate({ navigate, blueColor: _blueColor }: ViewCreateProps)
               disabled={isDisabled}
             >
               <Icon name="play" size={14}/>
-              {isDisabled ? 'En desarrollo' : mode === 'ai' ? 'Jugar contra Flattie' : 'Iniciar partida local'}
+              {mode === 'online' ? 'Crear sala pública' : mode === 'private' ? 'Crear sala privada' : mode === 'ai' ? 'Jugar contra Flattie' : 'Iniciar partida local'}
             </button>
             <button className="btn ghost" style={{ width: '100%' }} onClick={handleSaveTemplate}>
               {templateSaved ? '¡Guardado!' : 'Guardar como plantilla'}
@@ -327,6 +336,7 @@ export function ViewCreate({ navigate, blueColor: _blueColor }: ViewCreateProps)
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
