@@ -3,8 +3,11 @@ import { useSettingsStore } from './stores/settingsStore';
 import { Icon, Avatar, Kbd, ProgressBar } from './components/ui';
 import { useGameStore } from './stores/gameStore';
 import { useUserStore } from './stores/userStore';
+import { useNetworkStore } from './stores/network.store';
 import { useCurrentUser } from './hooks/useCurrentUser';
 import { useAudioSync } from './hooks/useAudioSync';
+import { useOnlineGame } from './hooks/useOnlineGame';
+import { useFriends } from './hooks/useFriends';
 import * as audioService from './services/audioService';
 import type { ScreenName, ModalName, Player } from './types/game';
 import { ViewDashboard } from './pages/HomePage';
@@ -17,25 +20,29 @@ import { ViewHistory } from './pages/HistoryPage';
 import { ViewReplay } from './pages/ReplayPage';
 import { ViewSettings } from './pages/SettingsPage';
 import { ViewLogin } from './pages/LoginPage';
+import { ViewAchievements } from './pages/AchievementsPage';
+import { ViewRanking } from './pages/RankingPage';
+import { ViewFriends } from './pages/FriendsPage';
+import { ViewReplays } from './pages/ReplaysPage';
 import { MetaBoard } from './components/game/MetaBoard';
 import { buildSampleGame } from './utils/boardUtils';
 
 const NAV = [
   { k: 'home', icon: 'home', label: 'Inicio', screen: 'home' },
-  { k: 'play', icon: 'play', label: 'Jugar', screen: 'game', live: true },
+  { k: 'play', icon: 'play', label: 'Jugar', screen: 'game' },
   { k: 'create', icon: 'plus', label: 'Crear partida', screen: 'create' },
   { k: 'join', icon: 'users', label: 'Unirse', screen: 'join' },
-  { k: 'lobby', icon: 'chat', label: 'Lobby actual', screen: 'lobby', live: true },
+  { k: 'lobby', icon: 'chat', label: 'Lobby actual', screen: 'lobby' },
   { k: 'history', icon: 'history', label: 'Historial', screen: 'history', count: 447 },
   { k: 'profile', icon: 'user', label: 'Mi perfil', screen: 'profile' },
 ] as const;
 
 const NAV_SUB = [
-  { k: 'achievements', icon: 'trophy', label: 'Logros', sub: '14 / 42' },
-  { k: 'ranking', icon: 'medal', label: 'Ranking global' },
-  { k: 'friends', icon: 'users', label: 'Amigos', count: '4 online' },
-  { k: 'replays', icon: 'replay', label: 'Replays guardados', count: 12 },
-] as const;
+  { k: 'achievements', icon: 'trophy', label: 'Logros', sub: '14 / 42', screen: 'achievements' as const },
+  { k: 'ranking', icon: 'medal', label: 'Ranking global', screen: 'ranking' as const },
+  { k: 'friends', icon: 'users', label: 'Amigos', count: '4 online', screen: 'friends' as const },
+  { k: 'replays', icon: 'replay', label: 'Replays guardados', count: 12, screen: 'replays' as const },
+];
 
 function getScreenTitle(s: ScreenName): string {
   const map: Record<ScreenName, string> = {
@@ -49,6 +56,10 @@ function getScreenTitle(s: ScreenName): string {
     replay: 'Replay',
     settings: 'Configuración',
     login: 'Acceso',
+    achievements: 'Logros',
+    ranking: 'Ranking global',
+    friends: 'Amigos',
+    replays: 'Replays guardados',
   };
   return map[s];
 }
@@ -65,12 +76,25 @@ function getScreenIcon(s: ScreenName): string {
     replay: 'replay',
     settings: 'settings',
     login: 'user',
+    achievements: 'trophy',
+    ranking: 'medal',
+    friends: 'users',
+    replays: 'replay',
   };
   return map[s];
 }
 
 interface ResultModalProps {
   kind: 'victory' | 'defeat' | 'draw';
+  playerX: string;
+  playerO: string;
+  xCaptures: number;
+  oCaptures: number;
+  movesCount: number;
+  timeX: number;
+  timeO: number;
+  initialTime: number;
+  mode: 'local' | 'ai' | 'online';
   onClose: () => void;
   blueColor: string;
   redColor: string;
@@ -79,15 +103,14 @@ interface ResultModalProps {
 
 interface PlayerResultProps {
   name: string;
-  elo: number;
-  delta: string;
+  captures: number;
   side: Player;
   win: boolean;
   blueColor: string;
   redColor: string;
 }
 
-const PlayerResult: FC<PlayerResultProps> = ({ name, elo, delta, side, win, blueColor, redColor }) => {
+const PlayerResult: FC<PlayerResultProps> = ({ name, captures, side, win, blueColor, redColor }) => {
   const gradient =
     side === 'X'
       ? `linear-gradient(140deg,${blueColor},#2563EB)`
@@ -107,21 +130,17 @@ const PlayerResult: FC<PlayerResultProps> = ({ name, elo, delta, side, win, blue
     >
       <Avatar name={name} size={36} gradient={gradient} status="online" />
       <div style={{ fontSize: 12.5, fontWeight: 700, textAlign: 'center' }}>{name}</div>
-      <div style={{ fontSize: 11.5, color: 'var(--fg-muted)' }}>{elo}</div>
-      <div
-        style={{
-          fontSize: 12,
-          fontWeight: 700,
-          color: delta.startsWith('+') ? 'var(--green)' : delta.startsWith('-') ? 'var(--red)' : 'var(--fg-muted)',
-        }}
-      >
-        {delta}
-      </div>
+      {win && (
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--green)', letterSpacing: '0.05em' }}>
+          GANADOR
+        </div>
+      )}
+      <div style={{ fontSize: 11.5, color: 'var(--fg-muted)' }}>{captures} subt.</div>
     </div>
   );
 };
 
-const ResultModal: FC<ResultModalProps> = ({ kind, onClose, blueColor, redColor, navigate }) => {
+const ResultModal: FC<ResultModalProps> = ({ kind, playerX, playerO, xCaptures, oCaptures, movesCount, timeX, timeO, initialTime, mode, onClose, blueColor, redColor, navigate }) => {
   const bgMap = {
     victory: 'radial-gradient(ellipse at top,rgba(34,197,94,0.18) 0%,transparent 70%)',
     defeat: 'radial-gradient(ellipse at top,rgba(239,68,68,0.18) 0%,transparent 70%)',
@@ -129,8 +148,24 @@ const ResultModal: FC<ResultModalProps> = ({ kind, onClose, blueColor, redColor,
   } as const;
   const iconMap = { victory: '🏆', defeat: '💀', draw: '🤝' } as const;
   const titleMap = { victory: 'Victoria', defeat: 'Derrota', draw: 'Empate' } as const;
-  const xDelta = kind === 'victory' ? '+18' : kind === 'defeat' ? '-15' : '+2';
-  const oDelta = kind === 'victory' ? '-15' : kind === 'defeat' ? '+18' : '+2';
+
+  const modeLabel = mode === 'online' ? 'Ranked' : mode === 'ai' ? 'vs IA' : 'Local';
+  const subtitle = kind === 'draw' ? 'Sin cambios · Modo local' : `Partida terminada · ${modeLabel}`;
+
+  const fmt = (s: number): string =>
+    `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+  // Tiempo transcurrido por cada jugador (segundos usados)
+  const elapsedX = Math.max(0, initialTime - timeX);
+  const elapsedO = Math.max(0, initialTime - timeO);
+  // Duración total de la partida
+  const totalDuration = elapsedX + elapsedO;
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   return (
     <div
@@ -148,7 +183,7 @@ const ResultModal: FC<ResultModalProps> = ({ kind, onClose, blueColor, redColor,
     >
       <div
         style={{
-          width: 380,
+          width: 'min(90vw, 420px)',
           background: `var(--bg-2), ${bgMap[kind]}`,
           border: '1px solid var(--border)',
           borderRadius: 16,
@@ -179,15 +214,14 @@ const ResultModal: FC<ResultModalProps> = ({ kind, onClose, blueColor, redColor,
             {titleMap[kind]}
           </div>
           <div className="t-cap" style={{ marginTop: 4 }}>
-            {kind === 'draw' ? 'Sin cambios de ELO' : `ELO ${xDelta} · 1814 → ${1814 + parseInt(xDelta)}`}
+            {subtitle}
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center' }}>
           <PlayerResult
-            name="tú · Lucas"
-            elo={1814}
-            delta={xDelta}
+            name={playerX}
+            captures={xCaptures}
             side="X"
             win={kind === 'victory'}
             blueColor={blueColor}
@@ -195,9 +229,8 @@ const ResultModal: FC<ResultModalProps> = ({ kind, onClose, blueColor, redColor,
           />
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg-muted)' }}>vs</div>
           <PlayerResult
-            name="maverick"
-            elo={1842}
-            delta={oDelta}
+            name={playerO}
+            captures={oCaptures}
             side="O"
             win={kind === 'defeat'}
             blueColor={blueColor}
@@ -205,12 +238,12 @@ const ResultModal: FC<ResultModalProps> = ({ kind, onClose, blueColor, redColor,
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 8 }}>
           {[
-            { label: 'Movimientos', value: '41' },
-            { label: 'Subt. ganados', value: kind === 'victory' ? '5' : kind === 'defeat' ? '3' : '4' },
-            { label: 'Tiempo', value: '12:04' },
-            { label: 'Precisión', value: '87%' },
+            { label: 'Movimientos', value: String(movesCount) },
+            { label: 'Subt. X',     value: String(xCaptures) },
+            { label: 'Subt. O',     value: String(oCaptures) },
+            { label: 'Duración',    value: totalDuration > 0 ? fmt(totalDuration) : '--:--' },
           ].map((s) => (
             <div
               key={s.label}
@@ -230,8 +263,8 @@ const ResultModal: FC<ResultModalProps> = ({ kind, onClose, blueColor, redColor,
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn ghost" style={{ flex: 1 }} onClick={() => navigate('lobby')}>
-            Lobby
+          <button className="btn ghost" style={{ flex: 1 }} onClick={() => { navigate('home'); onClose(); }}>
+            Inicio
           </button>
           <button className="btn ghost" style={{ flex: 1 }} onClick={() => navigate('replay')}>
             Ver replay
@@ -493,13 +526,43 @@ const SettingsModal: FC<SettingsModalProps> = ({ onClose }) => (
   </div>
 );
 
+export const UnderConstruction: FC<{ label: string; icon: string; navigate: (s: ScreenName) => void }> = ({ label, icon, navigate }) => (
+  <div className="fade-in" style={{ padding: 28, overflow: 'auto', height: '100%' }}>
+    <div style={{ marginBottom: 24 }}>
+      <button className="btn ghost sm" onClick={() => navigate('home')}><Icon name="arrow-l" size={14}/> Inicio</button>
+    </div>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 'calc(100% - 80px)', gap: 20, textAlign: 'center' }}>
+      <div style={{ width: 72, height: 72, borderRadius: 16, background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name={icon} size={32} style={{ color: 'var(--text-3)' }} />
+      </div>
+      <div>
+        <div className="t-h1" style={{ marginBottom: 8 }}>{label}</div>
+        <div className="muted" style={{ fontSize: 14 }}>Esta sección está en construcción.</div>
+        <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Estamos trabajando en ello — vuelve pronto.</div>
+      </div>
+      <span className="chip amber">Próximamente</span>
+    </div>
+  </div>
+);
+
 const SAMPLE_GAME = buildSampleGame();
 
 function App() {
   const [screen, setScreen] = useState<ScreenName>('home');
   const [modal, setModal] = useState<ModalName>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { game } = useGameStore();
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  const { game, playerX, playerO, timeX, timeO, initialTime, mode } = useGameStore();
+  const isGameActive = useGameStore((s) => s.isActive);
+
+  const xCaptures = game.sb.filter((s) => s.winner === 'X').length;
+  const oCaptures = game.sb.filter((s) => s.winner === 'O').length;
+  const movesCount = game.history.length;
+
+  const liveDots: Partial<Record<string, boolean>> = {
+    play: isGameActive,
+    lobby: false, // no lobby store yet — always false until implemented
+  };
 
   const { colorX: accentColor, colorO: oColor, theme, reduceMotion, density } = useSettingsStore();
 
@@ -507,6 +570,8 @@ function App() {
   const { profile, signIn, signUp, enterAsGuest, signOut } = useUserStore();
 
   useAudioSync(); // syncs volume settings to audio service in real time
+
+  const { friends, loading: friendsLoading } = useFriends();
 
   // Apply density attribute to <html>
   useEffect(() => {
@@ -546,7 +611,18 @@ function App() {
 
   const navigate = (s: ScreenName) => setScreen(s);
 
-  const showTabs = screen === 'home' || screen === 'profile' || screen === 'history';
+  useEffect(() => {
+    if (modal === 'victory' || modal === 'defeat' || modal === 'draw') {
+      setModal(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
+
+  useOnlineGame(navigate);
+
+  const { createRoom, joinRoom, sendReady, sendStartGame, sendMove, sendChat, cleanupRoom } = useNetworkStore();
+
+  const showTabs = screen === 'profile';
 
   // Show splash while verifying session
   if (!authChecked) {
@@ -638,7 +714,7 @@ function App() {
             >
               <Icon name={n.icon} size={16} className="nav-icon" />
               <span className="nav-text">{n.label}</span>
-              {'live' in n && n.live && screen !== n.screen && <span className="live-dot" />}
+              {liveDots[n.k] && screen !== n.screen && <span className="live-dot" />}
               {'count' in n && n.count !== undefined && <span className="nav-count">{n.count}</span>}
             </button>
           ))}
@@ -649,14 +725,22 @@ function App() {
         {/* Secondary nav */}
         <div className="nav-section">
           {sidebarOpen && <div className="nav-label">Tu cuenta</div>}
-          {NAV_SUB.map((n) => (
-            <button key={n.k} className="nav-item" title={n.label}>
-              <Icon name={n.icon} size={16} className="nav-icon" />
-              <span className="nav-text">{n.label}</span>
-              {'count' in n && n.count !== undefined && <span className="nav-count">{n.count}</span>}
-              {'sub' in n && n.sub && <span className="nav-count">{n.sub}</span>}
-            </button>
-          ))}
+          {NAV_SUB.map((n) => {
+            const badge = n.k === 'friends'
+              ? (friends.filter((f) => f.onlineStatus === 'online').length > 0
+                  ? `${friends.filter((f) => f.onlineStatus === 'online').length} online`
+                  : undefined)
+              : ('count' in n ? n.count : undefined);
+            const sub = 'sub' in n ? n.sub : undefined;
+            return (
+              <button key={n.k} className={`nav-item ${screen === n.screen ? 'active' : ''}`} onClick={() => navigate(n.screen as ScreenName)} title={n.label}>
+                <Icon name={n.icon} size={16} className="nav-icon" />
+                <span className="nav-text">{n.label}</span>
+                {badge !== undefined && <span className="nav-count">{badge}</span>}
+                {sub && <span className="nav-count">{sub}</span>}
+              </button>
+            );
+          })}
         </div>
 
         {/* Friends section — only when expanded */}
@@ -664,24 +748,65 @@ function App() {
           <div className="nav-section">
             <div className="nav-label">
               <span>Amigos</span>
-              <Icon name="plus" size={12} />
+              <button
+                className="btn icon ghost"
+                style={{ width: 18, height: 18, padding: 0 }}
+                onClick={() => navigate('friends')}
+                title="Agregar amigo"
+              >
+                <Icon name="plus" size={12} />
+              </button>
             </div>
-            {(
-              [
-                { n: 'maverick', s: 'online', st: 'En partida' },
-                { n: 'somnia', s: 'online', st: 'Disponible' },
-                { n: 'noahz', s: 'online', st: 'En menú' },
-                { n: 'baltz', s: 'away', st: 'Ausente' },
-              ] as const
-            ).map((f) => (
-              <div key={f.n} className="nav-item" style={{ padding: '6px 10px' }}>
-                <Avatar name={f.n} size={22} status={f.s} />
-                <div style={{ minWidth: 0, lineHeight: 1.2 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600 }}>{f.n}</div>
-                  <div className="t-cap" style={{ fontSize: 10.5 }}>{f.st}</div>
-                </div>
+            {friendsLoading ? (
+              <div style={{ padding: '8px 10px', color: 'var(--fg-muted)', fontSize: 11.5 }}>
+                Cargando...
               </div>
-            ))}
+            ) : friends.length === 0 ? (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  padding: '12px 8px',
+                  gap: 6,
+                  color: 'var(--fg-muted)',
+                }}
+              >
+                <span
+                  style={{ fontSize: 22, display: 'inline-block', animation: 'mosquito-fly 3s ease-in-out infinite' }}
+                  title="No hay amigos online"
+                >
+                  🦟
+                </span>
+                <span style={{ fontSize: 10.5, textAlign: 'center', lineHeight: 1.3 }}>
+                  Sin amigos online
+                </span>
+              </div>
+            ) : (
+              <>
+                {friends.slice(0, 3).map((f) => (
+                  <div key={f.friendship.id} className="nav-item" style={{ padding: '6px 10px' }}>
+                    <Avatar name={f.profile.displayName ?? f.profile.username} size={22} status={f.onlineStatus} />
+                    <div style={{ minWidth: 0, lineHeight: 1.2 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {f.profile.displayName ?? f.profile.username}
+                      </div>
+                      <div className="t-cap" style={{ fontSize: 10.5 }}>{f.statusText}</div>
+                    </div>
+                  </div>
+                ))}
+                {friends.length > 3 && (
+                  <button
+                    className="nav-item"
+                    style={{ padding: '5px 10px', color: 'var(--fg-muted)', fontSize: 11.5 }}
+                    onClick={() => navigate('friends')}
+                  >
+                    <Icon name="users" size={12} />
+                    <span>Ver más ({friends.length - 3} más)</span>
+                  </button>
+                )}
+              </>
+            )}
           </div>
         )}
 
@@ -715,10 +840,10 @@ function App() {
               </button>
               <button
                 className="btn icon ghost"
-                onClick={() => { void signOut(); navigate('login'); }}
-                title="Cerrar sesion"
+                onClick={() => setShowSignOutDialog(true)}
+                title="Cerrar sesión"
               >
-                <Icon name="arrow-r" size={14} />
+                <Icon name="log-out" size={14} />
               </button>
             </>
           )}
@@ -733,19 +858,6 @@ function App() {
               <Icon name={getScreenIcon(screen)} size={13} />
               {getScreenTitle(screen)}
             </div>
-            {screen === 'home' && (
-              <>
-                <div className="view-tab">
-                  <Icon name="gamepad" size={13} />
-                  Partida vs maverick
-                  <div className="dot" />
-                </div>
-                <div className="view-tab">
-                  <Icon name="trophy" size={13} />
-                  Temporada actual
-                </div>
-              </>
-            )}
             <div className="spacer" />
             <button className="btn icon ghost" style={{ width: 26, height: 26 }}>
               <Icon name="plus" size={13} />
@@ -762,16 +874,35 @@ function App() {
               redColor={oColor}
               navigate={navigate}
               openModal={setModal}
+              onSendMove={sendMove}
             />
           )}
           {screen === 'lobby' && (
-            <ViewLobby navigate={navigate} blueColor={accentColor} redColor={oColor} />
+            <ViewLobby
+              navigate={navigate}
+              blueColor={accentColor}
+              redColor={oColor}
+              onReady={sendReady}
+              onStartGame={() => { cleanupRoom(); sendStartGame(); }}
+              onSendChat={sendChat}
+            />
           )}
           {screen === 'create' && (
-            <ViewCreate navigate={navigate} blueColor={accentColor} />
+            <ViewCreate
+              navigate={navigate}
+              blueColor={accentColor}
+              playerName={displayName}
+              onCreateRoom={createRoom}
+            />
           )}
           {screen === 'join' && (
-            <ViewJoin navigate={navigate} blueColor={accentColor} redColor={oColor} />
+            <ViewJoin
+              navigate={navigate}
+              blueColor={accentColor}
+              redColor={oColor}
+              playerName={displayName}
+              onJoinRoom={joinRoom}
+            />
           )}
           {screen === 'profile' && (
             <ViewProfile navigate={navigate} blueColor={accentColor} redColor={oColor} />
@@ -785,28 +916,31 @@ function App() {
           {screen === 'settings' && (
             <ViewSettings navigate={navigate} blueColor={accentColor} />
           )}
+          {screen === 'achievements' && (
+            <ViewAchievements navigate={navigate} blueColor={accentColor} redColor={oColor} />
+          )}
+          {screen === 'ranking' && (
+            <ViewRanking navigate={navigate} blueColor={accentColor} redColor={oColor} />
+          )}
+          {screen === 'friends' && (
+            <ViewFriends navigate={navigate} blueColor={accentColor} redColor={oColor} />
+          )}
+          {screen === 'replays' && (
+            <ViewReplays navigate={navigate} blueColor={accentColor} redColor={oColor} />
+          )}
 
-          {modal === 'victory' && (
+          {(modal === 'victory' || modal === 'defeat' || modal === 'draw') && (
             <ResultModal
-              kind="victory"
-              onClose={() => setModal(null)}
-              blueColor={accentColor}
-              redColor={oColor}
-              navigate={navigate}
-            />
-          )}
-          {modal === 'defeat' && (
-            <ResultModal
-              kind="defeat"
-              onClose={() => setModal(null)}
-              blueColor={accentColor}
-              redColor={oColor}
-              navigate={navigate}
-            />
-          )}
-          {modal === 'draw' && (
-            <ResultModal
-              kind="draw"
+              kind={modal as 'victory' | 'defeat' | 'draw'}
+              playerX={playerX}
+              playerO={playerO}
+              xCaptures={xCaptures}
+              oCaptures={oCaptures}
+              movesCount={movesCount}
+              timeX={timeX}
+              timeO={timeO}
+              initialTime={initialTime}
+              mode={mode}
               onClose={() => setModal(null)}
               blueColor={accentColor}
               redColor={oColor}
@@ -825,6 +959,39 @@ function App() {
           )}
         </div>
       </main>
+
+      {/* Sign-out confirmation dialog */}
+      {showSignOutDialog && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowSignOutDialog(false)}
+        >
+          <div
+            style={{ width: 340, background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)', flexShrink: 0 }}>
+                <Icon name="log-out" size={20} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>¿Cerrar sesión?</div>
+                <div className="t-cap" style={{ marginTop: 2 }}>Tu progreso está guardado en la nube.</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn ghost" style={{ flex: 1 }} onClick={() => setShowSignOutDialog(false)}>Cancelar</button>
+              <button
+                className="btn"
+                style={{ flex: 1, background: 'var(--red)', color: '#fff' }}
+                onClick={() => { void signOut(); navigate('login'); setShowSignOutDialog(false); }}
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Statusbar */}
       <div className="statusbar">
