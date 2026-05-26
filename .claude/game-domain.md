@@ -54,81 +54,73 @@ Una vez ganado, el subtablero se **bloquea** (ningún jugador puede jugar en él
 
 ## Modelo de datos del dominio
 
+El estado del juego usa un **flat array de 9 elementos** para los subtableros (en lugar de matriz 3×3). Esto simplifica la indexación: una celda en el rango 0-8 de un subtablero determina directamente el índice 0-8 del siguiente subtablero forzado.
+
 ```typescript
 // Tipos fundamentales
 
-type Player = 'x' | 'o';
+type Player = 'X' | 'O';
 type CellValue = Player | null;
-type SubBoardStatus = 'x_wins' | 'o_wins' | 'draw' | 'in_progress';
-type GameStatus = 'x_wins' | 'o_wins' | 'draw' | 'in_progress' | 'not_started';
+type SubBoardWinner = Player | 'draw' | null;
 
-interface BoardPosition {
-  macroRow: 0 | 1 | 2;
-  macroCol: 0 | 1 | 2;
-  microRow: 0 | 1 | 2;
-  microCol: 0 | 1 | 2;
+interface SubBoardState {
+  cells: CellValue[];        // array de 9 elementos (índices 0-8)
+  winner: SubBoardWinner;    // 'X' | 'O' | 'draw' | null
+  winLine: number[] | null;  // índices de las 3 celdas ganadoras, o null
 }
 
-interface SubBoard {
-  cells: [[CellValue, CellValue, CellValue],
-           [CellValue, CellValue, CellValue],
-           [CellValue, CellValue, CellValue]];
-  status: SubBoardStatus;
-  winner: Player | null;
-}
-
-interface MacroBoard {
-  subBoards: [[SubBoard, SubBoard, SubBoard],
-              [SubBoard, SubBoard, SubBoard],
-              [SubBoard, SubBoard, SubBoard]];
-  status: GameStatus;
-  winner: Player | null;
-}
-
-interface Move {
-  player: Player;
-  position: BoardPosition;
-  timestamp: number;
-  moveNumber: number;
+interface MoveHistory {
+  n: number;           // número de movimiento (1, 2, 3, ...)
+  by: Player;          // quién hizo el movimiento ('X' | 'O')
+  sb: number;          // índice del subtablero (0-8)
+  cell: number;        // índice de la celda dentro del subtablero (0-8)
 }
 
 interface GameState {
-  board: MacroBoard;
-  currentPlayer: Player;
-  activeSubBoard: { row: 0|1|2; col: 0|1|2 } | null; // null = libre elección
-  moveHistory: Move[];
-  status: GameStatus;
-  startedAt: number;
-  endedAt: number | null;
+  sb: SubBoardState[];           // array de 9 subtableros (índices 0-8)
+  turn: Player;                   // jugador actual ('X' | 'O')
+  activeSb: number | null;        // índice del subtablero forzado (0-8), null = libre elección
+  lastMove: { sb: number; cell: number } | null;
+  history: MoveHistory[];
 }
 ```
+
+**Indexación de flat array:**
+- Subtableros: índices 0-8 corresponden a la disposición 3×3: `[0,1,2 | 3,4,5 | 6,7,8]`
+- Celdas dentro de subtablero: índices 0-8 con el mismo mapeo
+- Conversión a coordenadas 2D: `row = index ÷ 3`, `col = index mod 3`
 
 ---
 
 ## Invariantes del juego (NUNCA violar)
 
 1. **Turno alternado:** X siempre mueve primero. Los turnos alternan perfectamente sin excepción.
-2. **Celda ocupada:** No se puede jugar en una celda que ya tiene valor.
-3. **Subtablero bloqueado:** No se puede jugar en un subtablero con status distinto de `in_progress`.
-4. **Subtablero forzado:** Si `activeSubBoard !== null`, el movimiento DEBE ser en ese subtablero.
-5. **Movimiento final:** Una vez `gameStatus !== 'in_progress'`, no se aceptan más movimientos.
-6. **Secuencia de historial:** `moveHistory[i].moveNumber === i + 1` siempre.
+2. **Celda ocupada:** No se puede jugar en una celda que ya tiene valor (`cells[index] === null`).
+3. **Subtablero bloqueado:** No se puede jugar en un subtablero cuyo `winner !== null`.
+4. **Subtablero forzado:** Si `activeSb !== null`, el movimiento DEBE ser en ese subtablero.
+5. **Movimiento final:** Una vez `gameWinner !== null` en el store, no se aceptan más movimientos.
+6. **Secuencia de historial:** `history[i].n === i + 1` siempre.
 
 ---
 
 ## Algoritmo de determinación del subtablero activo
 
+La celda donde juega el jugador (índice 0-8) determina directamente el índice del siguiente subtablero forzado, porque ambos usan la misma indexación de flat array.
+
 ```
-función determinarSubtableroActivo(move: Move, board: MacroBoard):
-  subRow = move.position.microRow
-  subCol = move.position.microCol
-  targetSubBoard = board.subBoards[subRow][subCol]
+función determinarSubtableroActivo(cellIndex: number, board: GameState):
+  // cellIndex es el índice (0-8) de la celda donde se jugó
+  targetSb = board.sb[cellIndex]  // accede al subtablero en el mismo índice
   
-  si targetSubBoard.status === 'in_progress':
-    return { row: subRow, col: subCol }
+  si targetSb.winner === null:    // subtablero no está ganado ni empatado
+    return cellIndex              // fuerza el siguiente movimiento en ese subtablero
   sino:
-    return null  // jugador elige libremente
+    return null                   // subtablero bloqueado, jugador elige libremente
 ```
+
+**Ejemplo:**
+- Jugador X juega en celda `2` del subtablero `0` → el siguiente subtablero forzado es `sb[2]`
+- Si `sb[2]` ya está ganado o empatado → `activeSb = null` → O puede jugar en cualquier subtablero no bloqueado
 
 ---
 
@@ -157,18 +149,18 @@ función determinarSubtableroActivo(move: Move, board: MacroBoard):
 
 Usar siempre estos términos. No inventar sinónimos.
 
-| Término | Descripción |
-|---------|-------------|
-| `macroboard` | El tablero principal 3×3 |
-| `subboard` | Un subtablero individual 3×3 |
-| `cell` | Una celda individual dentro de un subboard |
-| `move` | Un movimiento completo (jugador + posición) |
-| `active subboard` | El subboard donde el siguiente jugador DEBE jugar |
-| `free choice` | Cuando `activeSubBoard === null` |
-| `player X` | Jugador con marcas X, siempre mueve primero |
-| `player O` | Jugador con marcas O, mueve segundo |
-| `locked subboard` | Subboard ganado o en empate, no jugable |
-| `game status` | Estado global: `not_started` | `in_progress` | terminado |
+| Término | Descripción | Variable en código |
+|---------|-------------|-------------------|
+| `macroboard` | El tablero principal 3×3 (colección de 9 subtableros) | `GameState.sb[]` (array de 9) |
+| `subboard` | Un subtablero individual 3×3 | `SubBoardState`, `sb[0]` a `sb[8]` |
+| `cell` | Una celda individual dentro de un subboard | `cells[0]` a `cells[8]` |
+| `move` | Un movimiento completo (jugador + posición) | `MoveHistory` |
+| `active subboard` | El subboard donde el siguiente jugador DEBE jugar | `activeSb` (índice 0-8 o null) |
+| `free choice` | Cuando `activeSb === null` | Permite jugar en cualquier subboard no bloqueado |
+| `player X` | Jugador con marcas X, siempre mueve primero | `'X'` |
+| `player O` | Jugador con marcas O, mueve segundo | `'O'` |
+| `locked subboard` | Subboard ganado o en empate, no jugable | `winner !== null` |
+| `game winner` | Ganador de la partida o empate | `gameWinner` en store |
 
 ---
 
