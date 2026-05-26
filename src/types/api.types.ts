@@ -21,3 +21,13 @@ export interface SupabaseError {
   details: string | null;
   hint: string | null;
 }
+
+export type RoomListing = {
+  id: string;
+  code: string;
+  hostName: string;
+  hostElo: number;
+  timeControl: 'none' | 'blitz' | 'rapid' | 'custom';
+  status: 'waiting' | 'playing' | 'finished';
+  createdAt: string;
+};
