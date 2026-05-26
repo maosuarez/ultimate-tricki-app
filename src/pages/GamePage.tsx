@@ -4,6 +4,7 @@ import { UltimateBoard, MetaBoard } from '../components/game';
 import type { ScreenName, ModalName, MoveHistory } from '../types/game';
 import { useGameStore } from '../stores/gameStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useNetworkStore } from '../stores/network.store';
 import { playMove, playSubBoardCapture } from '../services/audioService';
 import { agentService } from '../services/agentService';
 
@@ -12,6 +13,7 @@ interface ViewGameProps {
   redColor: string;
   navigate: (screen: ScreenName) => void;
   openModal?: (modal: ModalName) => void;
+  onSendMove?: (sb: number, cell: number) => void;
 }
 
 interface PlayerCardProps {
@@ -164,9 +166,11 @@ export function ViewGame({
   redColor,
   navigate,
   openModal,
+  onSendMove,
 }: ViewGameProps): React.ReactElement {
-  const { game, makeMove, playerX, playerO, chatMessages, gameWinner, isActive, timeX, timeO, tickTimer, aiAgentId, botSide } = useGameStore();
+  const { game, makeMove, playerX, playerO, chatMessages, gameWinner, isActive, timeX, timeO, tickTimer, aiAgentId, botSide, mode } = useGameStore();
   const { showCoordinates, highlightLastMove } = useSettingsStore();
+  const { mySide, pendingRemoteMove, setPendingRemoteMove } = useNetworkStore();
 
   const chatRef = React.useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = React.useState<'Eventos' | 'Movimientos'>('Movimientos');
@@ -250,7 +254,15 @@ export function ViewGame({
     } else {
       openModal?.('victory');
     }
-  }, [gameWinner, openModal]);
+    console.log('[Game] Result:', { winner: gameWinner, mode, playerX, playerO, moves: game.history.length });
+  }, [gameWinner, openModal, mode, playerX, playerO, game.history.length]);
+
+  // Apply incoming remote move
+  React.useEffect(() => {
+    if (!pendingRemoteMove) return;
+    makeMove(pendingRemoteMove.sb, pendingRemoteMove.cell);
+    setPendingRemoteMove(null);
+  }, [pendingRemoteMove, makeMove, setPendingRemoteMove]);
 
   // Auto-scroll chat to bottom when new messages arrive
   React.useEffect(() => {
@@ -260,12 +272,154 @@ export function ViewGame({
   }, [chatMessages]);
 
   if (!isActive) {
+    const idleKeyframes = `
+      @keyframes idle-float {
+        0%, 100% { transform: translateY(0px); }
+        50%       { transform: translateY(-6px); }
+      }
+      @keyframes line-draw {
+        to { stroke-dashoffset: 0; }
+      }
+      @keyframes cell-appear {
+        0%   { opacity: 0; transform: scale(0.4); }
+        60%  { opacity: 1; transform: scale(1.15); }
+        100% { opacity: 1; transform: scale(1); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .idle-board-wrap * { animation: none !important; }
+      }
+    `;
+
+    // Grid lines: 4 lines (2 vertical + 2 horizontal), each path length ~72px
+    // Cells: 3 colored marks placed in non-winning positions to suggest play
+    const LINE_LEN = 86;
+    const LINE_DUR = 0.55; // seconds per line
+    const LINE_STAGGER = 0.18;
+
     return (
       <div className="fade-in game-grid" style={{ gap: 14, padding: 14, height: '100%', overflow: 'hidden' }}>
+        <style dangerouslySetInnerHTML={{ __html: idleKeyframes }} />
         <div />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
-          <div className="card" style={{ padding: 40, textAlign: 'center', maxWidth: 380 }}>
-            <Icon name="grid" size={48} style={{ color: 'var(--text-3)', marginBottom: 16 }} />
+          <div className="card" style={{ padding: '44px 40px 40px', textAlign: 'center', maxWidth: 420 }}>
+
+            {/* Animated mini Ultimate TTT board */}
+            <div
+              className="idle-board-wrap"
+              style={{
+                display: 'inline-block',
+                marginBottom: 24,
+                animation: 'idle-float 3.6s ease-in-out infinite',
+                animationDelay: `${LINE_DUR + LINE_STAGGER * 3 + 0.4}s`,
+              }}
+            >
+              <svg
+                width={96}
+                height={96}
+                viewBox="0 0 96 96"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                {/* Outer grid lines — draw in sequentially */}
+                {/* vertical left  x=32 */}
+                <line
+                  x1={32} y1={4} x2={32} y2={92}
+                  stroke="var(--border-hi)"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeDasharray={LINE_LEN}
+                  strokeDashoffset={LINE_LEN}
+                  style={{
+                    animation: `line-draw ${LINE_DUR}s cubic-bezier(.22,.61,.36,1) forwards`,
+                    animationDelay: `${LINE_STAGGER * 0}s`,
+                  }}
+                />
+                {/* vertical right x=64 */}
+                <line
+                  x1={64} y1={4} x2={64} y2={92}
+                  stroke="var(--border-hi)"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeDasharray={LINE_LEN}
+                  strokeDashoffset={LINE_LEN}
+                  style={{
+                    animation: `line-draw ${LINE_DUR}s cubic-bezier(.22,.61,.36,1) forwards`,
+                    animationDelay: `${LINE_STAGGER * 1}s`,
+                  }}
+                />
+                {/* horizontal top y=32 */}
+                <line
+                  x1={4} y1={32} x2={92} y2={32}
+                  stroke="var(--border-hi)"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeDasharray={LINE_LEN}
+                  strokeDashoffset={LINE_LEN}
+                  style={{
+                    animation: `line-draw ${LINE_DUR}s cubic-bezier(.22,.61,.36,1) forwards`,
+                    animationDelay: `${LINE_STAGGER * 2}s`,
+                  }}
+                />
+                {/* horizontal bottom y=64 */}
+                <line
+                  x1={4} y1={64} x2={92} y2={64}
+                  stroke="var(--border-hi)"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeDasharray={LINE_LEN}
+                  strokeDashoffset={LINE_LEN}
+                  style={{
+                    animation: `line-draw ${LINE_DUR}s cubic-bezier(.22,.61,.36,1) forwards`,
+                    animationDelay: `${LINE_STAGGER * 3}s`,
+                  }}
+                />
+
+                {/* Cell marks — appear after lines finish drawing */}
+                {/* Blue X  — top-left cell (center ~16,16) */}
+                <g
+                  style={{
+                    opacity: 0,
+                    transformOrigin: '16px 16px',
+                    animation: `cell-appear 0.4s cubic-bezier(.22,.61,.36,1) forwards`,
+                    animationDelay: `${LINE_DUR + LINE_STAGGER * 3 + 0.05}s`,
+                  }}
+                >
+                  <line x1={9} y1={9} x2={23} y2={23} stroke="var(--blue)" strokeWidth={2.2} strokeLinecap="round" />
+                  <line x1={23} y1={9} x2={9} y2={23} stroke="var(--blue)" strokeWidth={2.2} strokeLinecap="round" />
+                </g>
+
+                {/* Red O — center cell (center ~48,48) */}
+                <circle
+                  cx={48}
+                  cy={48}
+                  r={9}
+                  stroke="var(--red)"
+                  strokeWidth={2.2}
+                  fill="none"
+                  style={{
+                    opacity: 0,
+                    transformOrigin: '48px 48px',
+                    animation: `cell-appear 0.4s cubic-bezier(.22,.61,.36,1) forwards`,
+                    animationDelay: `${LINE_DUR + LINE_STAGGER * 3 + 0.2}s`,
+                  }}
+                />
+
+                {/* Blue X — bottom-right cell (center ~80,80) */}
+                <g
+                  style={{
+                    opacity: 0,
+                    transformOrigin: '80px 80px',
+                    animation: `cell-appear 0.4s cubic-bezier(.22,.61,.36,1) forwards`,
+                    animationDelay: `${LINE_DUR + LINE_STAGGER * 3 + 0.35}s`,
+                  }}
+                >
+                  <line x1={73} y1={73} x2={87} y2={87} stroke="var(--blue)" strokeWidth={2.2} strokeLinecap="round" />
+                  <line x1={87} y1={73} x2={73} y2={87} stroke="var(--blue)" strokeWidth={2.2} strokeLinecap="round" />
+                </g>
+              </svg>
+            </div>
+
             <div className="t-h2" style={{ marginBottom: 8 }}>No hay partida activa</div>
             <div className="t-cap" style={{ marginBottom: 24 }}>
               Crea una nueva partida o únete a una existente para empezar a jugar.
@@ -400,8 +554,15 @@ export function ViewGame({
               game={game}
               blueColor={blueColor}
               redColor={redColor}
-              canInteract={gameWinner === null && game.turn !== botSide}
-              onMove={makeMove}
+              canInteract={
+                gameWinner === null &&
+                game.turn !== botSide &&
+                (mode !== 'online' || game.turn === mySide)
+              }
+              onMove={(sb, cell) => {
+                makeMove(sb, cell);
+                if (mode === 'online') onSendMove?.(sb, cell);
+              }}
               showCoordinates={showCoordinates}
               highlightLastMove={highlightLastMove}
             />
