@@ -5,7 +5,9 @@
 import { createClient, type SupabaseClient, type AuthChangeEvent, type Session } from '@supabase/supabase-js';
 import type { AuthSession, UserProfile, UserStats } from '@/types/user.types';
 import type { RemoteMatch, RemoteMatchMove, MatchFilter } from '@/types/match.types';
-import type { RankingEntry, SupabaseError } from '@/types/api.types';
+import type { RankingEntry, RoomListing, SupabaseError } from '@/types/api.types';
+import type { Achievement, AchievementWithStatus, UserAchievement } from '@/types/achievement.types';
+import type { Friendship, FriendEntry, FriendRequest } from '@/types/friends.types';
 
 // ─── Client initialisation (singleton) ───────────────────────────────────────
 
@@ -102,6 +104,18 @@ function rowToRemoteMatchMove(row: Record<string, unknown>): RemoteMatchMove {
     microRow:    row.micro_row    as number,
     microCol:    row.micro_col    as number,
     timestampMs: row.timestamp_ms as number,
+  };
+}
+
+function rowToRoomListing(row: Record<string, unknown>): RoomListing {
+  return {
+    id:          row.id           as string,
+    code:        row.code         as string,
+    hostName:    row.host_name    as string,
+    hostElo:     row.host_elo     as number,
+    timeControl: row.time_control as RoomListing['timeControl'],
+    status:      row.status       as RoomListing['status'],
+    createdAt:   row.created_at   as string,
   };
 }
 
@@ -373,6 +387,340 @@ export const supabaseService = {
           .order('move_number', { ascending: true });
         if (error) throwAs(error);
         return (data as Record<string, unknown>[]).map(rowToRemoteMatchMove);
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+  },
+
+  // ── Rooms ──────────────────────────────────────────────────────────────────
+
+  rooms: {
+    async create(data: { code: string; hostName: string; hostElo: number; timeControl: string }): Promise<RoomListing> {
+      try {
+        const { data: row, error } = await client
+          .from('rooms')
+          .insert({
+            code:         data.code,
+            host_name:    data.hostName,
+            host_elo:     data.hostElo,
+            time_control: data.timeControl,
+            status:       'waiting',
+          })
+          .select()
+          .single();
+        if (error) throwAs(error);
+        return rowToRoomListing(row as Record<string, unknown>);
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+
+    async updateStatus(code: string, status: 'playing' | 'finished'): Promise<void> {
+      try {
+        const { error } = await client
+          .from('rooms')
+          .update({ status })
+          .eq('code', code);
+        if (error) throwAs(error);
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+
+    async delete(code: string): Promise<void> {
+      try {
+        const { error } = await client
+          .from('rooms')
+          .delete()
+          .eq('code', code);
+        if (error) throwAs(error);
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+
+    async listWaiting(): Promise<RoomListing[]> {
+      try {
+        const { data, error } = await client
+          .from('rooms')
+          .select('*')
+          .eq('status', 'waiting')
+          .order('created_at', { ascending: false });
+        if (error) throwAs(error);
+        return (data as Record<string, unknown>[]).map(rowToRoomListing);
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+
+    subscribeToWaiting(
+      onInsert: (r: RoomListing) => void,
+      onDelete: (code: string) => void,
+      onUpdate: (r: RoomListing) => void,
+    ): () => void {
+      const channel = client
+        .channel('rooms-waiting')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'rooms' },
+          (payload) => {
+            const row = payload.new as Record<string, unknown>;
+            if (row.status === 'waiting') {
+              onInsert(rowToRoomListing(row));
+            }
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'rooms' },
+          (payload) => {
+            const row = payload.old as Record<string, unknown>;
+            if (typeof row.code === 'string') {
+              onDelete(row.code);
+            }
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'rooms' },
+          (payload) => {
+            const row = payload.new as Record<string, unknown>;
+            if (row.status !== 'waiting') {
+              // Room left waiting state — treat as removal from listing
+              if (typeof row.code === 'string') {
+                onDelete(row.code);
+              }
+            } else {
+              onUpdate(rowToRoomListing(row));
+            }
+          },
+        )
+        .subscribe();
+
+      return () => {
+        void client.removeChannel(channel);
+      };
+    },
+  },
+
+  // ── Achievements ───────────────────────────────────────────────────────────
+
+  achievements: {
+    async getAll(userId: string): Promise<AchievementWithStatus[]> {
+      try {
+        const [catalogRes, unlockedRes] = await Promise.all([
+          client.from('achievements').select('*').order('category'),
+          client.from('user_achievements').select('*').eq('user_id', userId),
+        ]);
+        if (catalogRes.error) throwAs(catalogRes.error);
+        if (unlockedRes.error) throwAs(unlockedRes.error);
+
+        const unlockedMap = new Map<string, string>(
+          (unlockedRes.data as Record<string, unknown>[]).map((row) => [
+            row.achievement_id as string,
+            row.unlocked_at as string,
+          ])
+        );
+
+        return (catalogRes.data as Record<string, unknown>[]).map((row): AchievementWithStatus => {
+          const id = row.id as string;
+          const unlockedAt = unlockedMap.get(id) ?? null;
+          return {
+            id,
+            emoji:       row.emoji       as string,
+            name:        row.name        as string,
+            description: row.description as string,
+            category:    row.category    as Achievement['category'],
+            isHidden:    row.is_hidden   as boolean,
+            unlocked:    unlockedAt !== null,
+            unlockedAt,
+          };
+        });
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+
+    async getUserUnlocked(userId: string): Promise<UserAchievement[]> {
+      try {
+        const { data, error } = await client
+          .from('user_achievements')
+          .select('*')
+          .eq('user_id', userId);
+        if (error) throwAs(error);
+        return (data as Record<string, unknown>[]).map((row): UserAchievement => ({
+          userId:        row.user_id        as string,
+          achievementId: row.achievement_id as string,
+          unlockedAt:    row.unlocked_at    as string,
+        }));
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+
+    async unlock(userId: string, achievementId: string): Promise<void> {
+      try {
+        const { error } = await client
+          .from('user_achievements')
+          .upsert(
+            { user_id: userId, achievement_id: achievementId },
+            { onConflict: 'user_id,achievement_id', ignoreDuplicates: true }
+          );
+        if (error) throwAs(error);
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+  },
+
+  // ── Friends ────────────────────────────────────────────────────────────────
+
+  friends: {
+    async getFriends(userId: string): Promise<FriendEntry[]> {
+      try {
+        const { data, error } = await client
+          .from('friendships')
+          .select('*, requester:profiles!friendships_requester_id_fkey(*), addressee:profiles!friendships_addressee_id_fkey(*)')
+          .eq('status', 'accepted')
+          .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
+        if (error) throwAs(error);
+
+        return (data as Record<string, unknown>[]).map((row): FriendEntry => {
+          const friendship: Friendship = {
+            id:          row.id           as string,
+            requesterId: row.requester_id as string,
+            addresseeId: row.addressee_id as string,
+            status:      row.status       as Friendship['status'],
+            createdAt:   row.created_at   as string,
+            updatedAt:   row.updated_at   as string,
+          };
+          // The friend's profile is whichever side is NOT the current user
+          const friendRow = (row.requester_id as string) === userId
+            ? row.addressee as Record<string, unknown>
+            : row.requester as Record<string, unknown>;
+          const profile = rowToProfile(friendRow);
+          return {
+            friendship,
+            profile,
+            onlineStatus: 'offline', // real-time presence not implemented yet
+            statusText:   'Sin conexión',
+          };
+        });
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+
+    async getRequests(userId: string): Promise<FriendRequest[]> {
+      try {
+        const { data, error } = await client
+          .from('friendships')
+          .select('*, requester:profiles!friendships_requester_id_fkey(*)')
+          .eq('addressee_id', userId)
+          .eq('status', 'pending');
+        if (error) throwAs(error);
+
+        return (data as Record<string, unknown>[]).map((row): FriendRequest => ({
+          friendship: {
+            id:          row.id           as string,
+            requesterId: row.requester_id as string,
+            addresseeId: row.addressee_id as string,
+            status:      row.status       as Friendship['status'],
+            createdAt:   row.created_at   as string,
+            updatedAt:   row.updated_at   as string,
+          },
+          profile:      rowToProfile(row.requester as Record<string, unknown>),
+          mutualCount:  0, // mutual friends count not implemented in DB yet
+        }));
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+
+    async sendRequest(requesterId: string, addresseeUsername: string): Promise<void> {
+      try {
+        // Look up addressee by username
+        const { data: profileData, error: profileError } = await client
+          .from('profiles')
+          .select('id')
+          .eq('username', addresseeUsername)
+          .single();
+        if (profileError) throwAs(profileError);
+        const addresseeId = (profileData as Record<string, unknown>).id as string;
+
+        const { error } = await client
+          .from('friendships')
+          .insert({ requester_id: requesterId, addressee_id: addresseeId });
+        if (error) throwAs(error);
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+
+    async acceptRequest(friendshipId: string): Promise<void> {
+      try {
+        const { error } = await client
+          .from('friendships')
+          .update({ status: 'accepted' })
+          .eq('id', friendshipId);
+        if (error) throwAs(error);
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+
+    async rejectRequest(friendshipId: string): Promise<void> {
+      try {
+        const { error } = await client
+          .from('friendships')
+          .delete()
+          .eq('id', friendshipId);
+        if (error) throwAs(error);
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+
+    async removeFriend(friendshipId: string): Promise<void> {
+      try {
+        const { error } = await client
+          .from('friendships')
+          .delete()
+          .eq('id', friendshipId);
+        if (error) throwAs(error);
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+
+    async getSuggested(userId: string, limit = 5): Promise<UserProfile[]> {
+      try {
+        // Get IDs already in a friendship with this user
+        const { data: existing } = await client
+          .from('friendships')
+          .select('requester_id, addressee_id')
+          .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
+
+        const excludedIds = new Set<string>([userId]);
+        if (existing) {
+          for (const row of existing as Record<string, unknown>[]) {
+            excludedIds.add(row.requester_id as string);
+            excludedIds.add(row.addressee_id as string);
+          }
+        }
+
+        const { data, error } = await client
+          .from('profiles')
+          .select('*')
+          .order('rating', { ascending: false })
+          .limit(limit + excludedIds.size); // over-fetch to filter
+        if (error) throwAs(error);
+
+        return (data as Record<string, unknown>[])
+          .filter((row) => !excludedIds.has(row.id as string))
+          .slice(0, limit)
+          .map(rowToProfile);
       } catch (err) {
         throwAs(err);
       }
