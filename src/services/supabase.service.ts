@@ -658,6 +658,17 @@ export const supabaseService = {
       }
     },
 
+    async sendRequestById(requesterId: string, addresseeId: string): Promise<void> {
+      try {
+        const { error } = await client
+          .from('friendships')
+          .insert({ requester_id: requesterId, addressee_id: addresseeId });
+        if (error) throwAs(error);
+      } catch (err) {
+        throwAs(err);
+      }
+    },
+
     async acceptRequest(friendshipId: string): Promise<void> {
       try {
         const { error } = await client

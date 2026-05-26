@@ -1,4 +1,4 @@
-import type { CellValue, SubBoardWinner, GameState } from '../types/game';
+import type { CellValue, SubBoardWinner, GameState, MoveHistory } from '../types/game';
 
 const WIN_LINES: number[][] = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -34,6 +34,44 @@ export function initGame(): GameState {
     lastMove: null,
     history: [],
   };
+}
+
+/**
+ * Reconstructs the GameState by replaying all moves from index 0 up to and
+ * including `upToIndex`. Pass -1 to get an empty board.
+ * Pure function — no side effects.
+ */
+export function reconstructBoardState(moves: MoveHistory[], upToIndex: number): GameState {
+  let state = initGame();
+  const limit = Math.min(upToIndex, moves.length - 1);
+  for (let i = 0; i <= limit; i++) {
+    const move = moves[i];
+    const { sb: sbIdx, cell } = move;
+
+    // Skip invalid moves silently to avoid crashing the replay
+    if (state.sb[sbIdx].cells[cell] !== null) continue;
+    if (state.sb[sbIdx].winner !== null) continue;
+    if (state.activeSb !== null && state.activeSb !== sbIdx) continue;
+
+    const next: GameState = JSON.parse(JSON.stringify(state)) as GameState;
+    next.sb[sbIdx].cells[cell] = next.turn;
+
+    const subResult = checkWin(next.sb[sbIdx].cells);
+    if (subResult.winner) {
+      next.sb[sbIdx].winner = subResult.winner;
+      next.sb[sbIdx].winLine = subResult.line;
+    }
+
+    const targetSb = next.sb[cell];
+    next.activeSb = targetSb.winner ? null : cell;
+
+    next.history = [...next.history, move];
+    next.lastMove = { sb: sbIdx, cell };
+    next.turn = next.turn === 'X' ? 'O' : 'X';
+
+    state = next;
+  }
+  return state;
 }
 
 export function buildSampleGame() {
