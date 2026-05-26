@@ -16,6 +16,7 @@ interface SettingsState {
   volumeMaster: number;
   volumeSfx: number;
   volumeMusic: number;
+  mutedAll: boolean;
 
   // Juego
   showCoordinates: boolean;
@@ -33,6 +34,7 @@ interface SettingsState {
   setVolumeMaster: (v: number) => void;
   setVolumeSfx: (v: number) => void;
   setVolumeMusic: (v: number) => void;
+  setMutedAll: (v: boolean) => void;
   setShowCoordinates: (v: boolean) => void;
   setHighlightLastMove: (v: boolean) => void;
   setConfirmResign: (v: boolean) => void;
@@ -52,6 +54,7 @@ export const useSettingsStore = create<SettingsState>()(
         volumeMaster: 70,
         volumeSfx: 80,
         volumeMusic: 35,
+        mutedAll: false,
 
         showCoordinates: true,
         highlightLastMove: true,
@@ -67,6 +70,7 @@ export const useSettingsStore = create<SettingsState>()(
         setVolumeMaster: (volumeMaster) => set({ volumeMaster }),
         setVolumeSfx: (volumeSfx) => set({ volumeSfx }),
         setVolumeMusic: (volumeMusic) => set({ volumeMusic }),
+        setMutedAll: (mutedAll) => set({ mutedAll }),
         setShowCoordinates: (showCoordinates) => set({ showCoordinates }),
         setHighlightLastMove: (highlightLastMove) => set({ highlightLastMove }),
         setConfirmResign: (confirmResign) => set({ confirmResign }),

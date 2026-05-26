@@ -32,6 +32,7 @@ const paths: Record<string, React.ReactNode> = {
   'chev-d':      <path d="M6 9l6 6 6-6"/>,
   'arrow-l':     <path d="M19 12H5M12 19l-7-7 7-7"/>,
   'arrow-r':     <path d="M5 12h14M12 5l7 7-7 7"/>,
+  'log-out':     <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>,
   crown:         <path d="M3 7l4 4 5-7 5 7 4-4-2 12H5L3 7z"/>,
   bolt:          <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>,
   clock:         <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,

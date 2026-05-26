@@ -4,9 +4,12 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import * as audioService from '@/services/audioService';
 
 export function useAudioSync(): void {
-  const { volumeMaster, volumeSfx, volumeMusic } = useSettingsStore();
+  const { volumeMaster, volumeSfx, volumeMusic, mutedAll } = useSettingsStore();
 
-  useEffect(() => { audioService.setVolumeMaster(volumeMaster); }, [volumeMaster]);
+  useEffect(() => {
+    audioService.setVolumeMaster(mutedAll ? 0 : volumeMaster);
+  }, [volumeMaster, mutedAll]);
+
   useEffect(() => { audioService.setVolumeSfx(volumeSfx); }, [volumeSfx]);
   useEffect(() => { audioService.setVolumeMusic(volumeMusic); }, [volumeMusic]);
 }

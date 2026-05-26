@@ -199,13 +199,18 @@ function SettingsApariencia(): React.ReactElement {
 // ─── Audio ────────────────────────────────────────────────────────────────────
 
 function SettingsAudio(): React.ReactElement {
-  const { colorX, volumeMaster, volumeSfx, volumeMusic, setVolumeMaster, setVolumeSfx, setVolumeMusic } =
+  const { colorX, volumeMaster, volumeSfx, volumeMusic, mutedAll, setVolumeMaster, setVolumeSfx, setVolumeMusic, setMutedAll } =
     useSettingsStore();
 
   return (
     <div>
       <div className="t-h1" style={{ marginBottom: 18 }}>Audio</div>
       <SettingsGroup title="Mezcla">
+        <SettingsRow
+          label="Silenciar todo"
+          desc="Desactiva todo el audio sin cambiar los niveles guardados"
+          control={<Toggle on={mutedAll} onChange={setMutedAll} />}
+        />
         <SettingsRow
           label="Volumen general"
           desc={`Maestro · ${volumeMaster}%`}
