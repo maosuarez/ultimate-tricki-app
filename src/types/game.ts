@@ -23,5 +23,5 @@ export interface GameState {
   history: MoveHistory[];
 }
 
-export type ScreenName = 'home' | 'game' | 'lobby' | 'create' | 'join' | 'profile' | 'history' | 'replay' | 'settings' | 'login' | 'achievements' | 'ranking' | 'friends' | 'replays';
+export type ScreenName = 'home' | 'game' | 'lobby' | 'create' | 'join' | 'profile' | 'history' | 'replay' | 'settings' | 'login' | 'achievements' | 'ranking' | 'friends' | 'replays' | 'developer-agents';
 export type ModalName = 'victory' | 'defeat' | 'draw' | 'reconnect' | 'flag' | 'settings' | 'disconnected' | null;

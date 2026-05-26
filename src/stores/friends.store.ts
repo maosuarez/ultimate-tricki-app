@@ -18,6 +18,7 @@ interface FriendsStore {
   fetchRequests: (userId: string) => Promise<void>;
   fetchSuggested: (userId: string) => Promise<void>;
   sendRequest: (requesterId: string, username: string) => Promise<void>;
+  sendRequestById: (requesterId: string, addresseeId: string) => Promise<void>;
   acceptRequest: (friendshipId: string, userId: string) => Promise<void>;
   rejectRequest: (friendshipId: string, userId: string) => Promise<void>;
 }
@@ -71,6 +72,17 @@ export const useFriendsStore = create<FriendsStore>()(
         try {
           await supabaseService.friends.sendRequest(requesterId, username);
           // Re-fetch to keep state consistent
+          await get().fetchFriends(requesterId);
+        } catch (err) {
+          set({ error: extractMessage(err) });
+          throw err;
+        }
+      },
+
+      sendRequestById: async (requesterId, addresseeId) => {
+        set({ error: null });
+        try {
+          await supabaseService.friends.sendRequestById(requesterId, addresseeId);
           await get().fetchFriends(requesterId);
         } catch (err) {
           set({ error: extractMessage(err) });

@@ -73,14 +73,10 @@ export const useMatchStore = create<MatchStore>()(
         set({ activeMatch: metadata, error: null });
       },
 
-      // End match with result (victory, defeat, draw)
-      endMatch: (result) => {
-        set((state) => ({
-          activeMatch: state.activeMatch
-            ? { ...state.activeMatch, endedAt: Date.now(), result }
-            : null,
-          error: null,
-        }));
+      // End match with result (victory, defeat, draw).
+      // Clears activeMatch so a new match can be created immediately.
+      endMatch: (_result) => {
+        set({ activeMatch: null, error: null });
       },
 
       // Abandon match mid-game (disconnection, user choice)
