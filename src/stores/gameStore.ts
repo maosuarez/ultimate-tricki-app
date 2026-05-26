@@ -18,14 +18,17 @@ interface GameStore {
   isActive: boolean;
   timeX: number;
   timeO: number;
+  initialTime: number;
   aiAgentId: string | null;
   botSide: 'X' | 'O' | null;
+  mode: 'local' | 'ai' | 'online';
   setGame: (game: GameState) => void;
   resetGame: () => void;
   makeMove: (sb: number, cell: number) => void;
   addChatMessage: (msg: ChatMessage) => void;
   startLocalGame: (nameX: string, nameO: string, timeSecs?: number) => void;
   startAiGame: (nameX: string, agentId: string, timeSecs: number) => void;
+  startOnlineGame: (nameX: string, nameO: string, timeSecs?: number) => void;
   tickTimer: () => void;
 }
 
@@ -40,12 +43,14 @@ export const useGameStore = create<GameStore>()(
       isActive: false,
       timeX: 300,
       timeO: 300,
+      initialTime: 300,
       aiAgentId: null,
       botSide: null,
+      mode: 'local' as const,
 
       setGame: (game) => set({ game }),
 
-      resetGame: () => set({ game: initGame(), gameWinner: null, chatMessages: [], isActive: false, timeX: 300, timeO: 300, aiAgentId: null, botSide: null }),
+      resetGame: () => set({ game: initGame(), gameWinner: null, chatMessages: [], isActive: false, timeX: 300, timeO: 300, initialTime: 300, aiAgentId: null, botSide: null, mode: 'local' }),
 
       makeMove: (sb, cell) => {
         const { game } = get();
@@ -116,8 +121,10 @@ export const useGameStore = create<GameStore>()(
           isActive: true,
           timeX: timeSecs ?? 300,
           timeO: timeSecs ?? 300,
+          initialTime: timeSecs ?? 300,
           aiAgentId: null,
           botSide: null,
+          mode: 'local',
         }),
 
       startAiGame: (nameX, agentId, timeSecs) =>
@@ -130,8 +137,26 @@ export const useGameStore = create<GameStore>()(
           isActive: true,
           timeX: timeSecs,
           timeO: timeSecs,
+          initialTime: timeSecs,
           aiAgentId: agentId,
           botSide: 'O',
+          mode: 'ai',
+        }),
+
+      startOnlineGame: (nameX, nameO, timeSecs) =>
+        set({
+          game: initGame(),
+          playerX: nameX,
+          playerO: nameO,
+          chatMessages: [],
+          gameWinner: null,
+          isActive: true,
+          timeX: timeSecs ?? 300,
+          timeO: timeSecs ?? 300,
+          initialTime: timeSecs ?? 300,
+          aiAgentId: null,
+          botSide: null,
+          mode: 'online',
         }),
 
       tickTimer: () => {

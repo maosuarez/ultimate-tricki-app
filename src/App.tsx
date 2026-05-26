@@ -8,6 +8,8 @@ import { useCurrentUser } from './hooks/useCurrentUser';
 import { useAudioSync } from './hooks/useAudioSync';
 import { useOnlineGame } from './hooks/useOnlineGame';
 import { useFriends } from './hooks/useFriends';
+import { useAchievements } from './hooks/useAchievements';
+import { useReplays } from './hooks/useReplays';
 import * as audioService from './services/audioService';
 import type { ScreenName, ModalName, Player } from './types/game';
 import { ViewDashboard } from './pages/HomePage';
@@ -33,15 +35,15 @@ const NAV = [
   { k: 'create', icon: 'plus', label: 'Crear partida', screen: 'create' },
   { k: 'join', icon: 'users', label: 'Unirse', screen: 'join' },
   { k: 'lobby', icon: 'chat', label: 'Lobby actual', screen: 'lobby' },
-  { k: 'history', icon: 'history', label: 'Historial', screen: 'history', count: 447 },
+  { k: 'history', icon: 'history', label: 'Historial', screen: 'history' },
   { k: 'profile', icon: 'user', label: 'Mi perfil', screen: 'profile' },
 ] as const;
 
 const NAV_SUB = [
-  { k: 'achievements', icon: 'trophy', label: 'Logros', sub: '14 / 42', screen: 'achievements' as const },
+  { k: 'achievements', icon: 'trophy', label: 'Logros', screen: 'achievements' as const },
   { k: 'ranking', icon: 'medal', label: 'Ranking global', screen: 'ranking' as const },
-  { k: 'friends', icon: 'users', label: 'Amigos', count: '4 online', screen: 'friends' as const },
-  { k: 'replays', icon: 'replay', label: 'Replays guardados', count: 12, screen: 'replays' as const },
+  { k: 'friends', icon: 'users', label: 'Amigos', screen: 'friends' as const },
+  { k: 'replays', icon: 'replay', label: 'Replays guardados', screen: 'replays' as const },
 ];
 
 function getScreenTitle(s: ScreenName): string {
@@ -572,6 +574,8 @@ function App() {
   useAudioSync(); // syncs volume settings to audio service in real time
 
   const { friends, loading: friendsLoading } = useFriends();
+  const { unlocked: achievementsUnlocked, total: achievementsTotal, loading: achievementsLoading } = useAchievements();
+  const { replays, loading: replaysLoading } = useReplays();
 
   // Apply density attribute to <html>
   useEffect(() => {
@@ -715,7 +719,6 @@ function App() {
               <Icon name={n.icon} size={16} className="nav-icon" />
               <span className="nav-text">{n.label}</span>
               {liveDots[n.k] && screen !== n.screen && <span className="live-dot" />}
-              {'count' in n && n.count !== undefined && <span className="nav-count">{n.count}</span>}
             </button>
           ))}
         </div>
@@ -726,18 +729,32 @@ function App() {
         <div className="nav-section">
           {sidebarOpen && <div className="nav-label">Tu cuenta</div>}
           {NAV_SUB.map((n) => {
-            const badge = n.k === 'friends'
-              ? (friends.filter((f) => f.onlineStatus === 'online').length > 0
-                  ? `${friends.filter((f) => f.onlineStatus === 'online').length} online`
-                  : undefined)
-              : ('count' in n ? n.count : undefined);
-            const sub = 'sub' in n ? n.sub : undefined;
+            let badge: string | number | undefined;
+            if (n.k === 'friends') {
+              if (friendsLoading) {
+                badge = '...';
+              } else {
+                const onlineCount = friends.filter((f) => f.onlineStatus === 'online').length;
+                badge = onlineCount > 0 ? `${onlineCount} online` : undefined;
+              }
+            } else if (n.k === 'achievements') {
+              if (achievementsLoading) {
+                badge = '...';
+              } else {
+                badge = achievementsTotal > 0 ? `${achievementsUnlocked} / ${achievementsTotal}` : undefined;
+              }
+            } else if (n.k === 'replays') {
+              if (replaysLoading) {
+                badge = '...';
+              } else {
+                badge = replays.length > 0 ? replays.length : undefined;
+              }
+            }
             return (
               <button key={n.k} className={`nav-item ${screen === n.screen ? 'active' : ''}`} onClick={() => navigate(n.screen as ScreenName)} title={n.label}>
                 <Icon name={n.icon} size={16} className="nav-icon" />
                 <span className="nav-text">{n.label}</span>
                 {badge !== undefined && <span className="nav-count">{badge}</span>}
-                {sub && <span className="nav-count">{sub}</span>}
               </button>
             );
           })}
@@ -1014,10 +1031,10 @@ function App() {
         </div>
         <div className="spacer" />
         <div className="pill">
-          <span>447 partidas</span>
+          <span>{replaysLoading ? '...' : `${replays.length} partidas`}</span>
         </div>
         <div className="pill">
-          <span>ELO 1814</span>
+          <span>ELO {profile?.rating ?? '—'}</span>
         </div>
         <div className="pill">
           <span style={{ color: 'var(--green)' }}>● </span>
