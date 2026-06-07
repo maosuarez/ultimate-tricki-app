@@ -116,6 +116,7 @@ function rowToRoomListing(row: Record<string, unknown>): RoomListing {
     timeControl: row.time_control as RoomListing['timeControl'],
     status:      row.status       as RoomListing['status'],
     createdAt:   row.created_at   as string,
+    isPublic:    (row.is_public as boolean) ?? false,
   };
 }
 
@@ -391,12 +392,43 @@ export const supabaseService = {
         throwAs(err);
       }
     },
+
+    async saveMatchMoves(
+      matchId: string,
+      moves: Array<{
+        moveNumber: number;
+        player: 'x' | 'o';
+        macroRow: number;
+        macroCol: number;
+        microRow: number;
+        microCol: number;
+        timestampMs: number;
+      }>
+    ): Promise<void> {
+      if (moves.length === 0) return;
+      try {
+        const rows = moves.map((m) => ({
+          match_id:    matchId,
+          move_number: m.moveNumber,
+          player:      m.player,
+          macro_row:   m.macroRow,
+          macro_col:   m.macroCol,
+          micro_row:   m.microRow,
+          micro_col:   m.microCol,
+          timestamp_ms: m.timestampMs,
+        }));
+        const { error } = await client.from('match_moves').insert(rows);
+        if (error) throwAs(error);
+      } catch (err) {
+        throwAs(err);
+      }
+    },
   },
 
   // ── Rooms ──────────────────────────────────────────────────────────────────
 
   rooms: {
-    async create(data: { code: string; hostName: string; hostElo: number; timeControl: string }): Promise<RoomListing> {
+    async create(data: { code: string; hostName: string; hostElo: number; timeControl: string; isPublic?: boolean }): Promise<RoomListing> {
       try {
         const { data: row, error } = await client
           .from('rooms')
@@ -406,6 +438,7 @@ export const supabaseService = {
             host_elo:     data.hostElo,
             time_control: data.timeControl,
             status:       'waiting',
+            is_public:    data.isPublic ?? false,
           })
           .select()
           .single();

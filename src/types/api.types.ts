@@ -30,4 +30,5 @@ export type RoomListing = {
   timeControl: 'none' | 'blitz' | 'rapid' | 'custom';
   status: 'waiting' | 'playing' | 'finished';
   createdAt: string;
+  isPublic: boolean;
 };
