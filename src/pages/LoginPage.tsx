@@ -29,7 +29,7 @@ function calcPasswordStrength(pw: string): number {
   return Math.min(score, 4);
 }
 
-export function ViewLogin({ navigate: _navigate, blueColor, onSignIn, onSignUp, onGuest }: ViewLoginProps): React.ReactElement {
+export function ViewLogin({ navigate: _navigate, blueColor: _blueColor, onSignIn, onSignUp, onGuest }: ViewLoginProps): React.ReactElement {
   const [tab, setTab] = React.useState<LoginTab>('login');
 
   // Shared form state
