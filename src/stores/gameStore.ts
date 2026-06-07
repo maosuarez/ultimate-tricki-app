@@ -180,11 +180,17 @@ export const useGameStore = create<GameStore>()(
         }),
 
       tickTimer: () => {
-        const { game } = get();
+        const { game, initialTime, gameWinner } = get();
+        if (gameWinner !== null) return;
+        if (initialTime === 9999) return;
         if (game.turn === 'X') {
-          set((s) => ({ timeX: Math.max(0, s.timeX - 1) }));
+          const newTime = Math.max(0, get().timeX - 1);
+          set({ timeX: newTime });
+          if (newTime === 0) set({ gameWinner: 'O', isActive: false });
         } else {
-          set((s) => ({ timeO: Math.max(0, s.timeO - 1) }));
+          const newTime = Math.max(0, get().timeO - 1);
+          set({ timeO: newTime });
+          if (newTime === 0) set({ gameWinner: 'X', isActive: false });
         }
       },
     }),

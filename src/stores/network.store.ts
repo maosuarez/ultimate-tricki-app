@@ -26,6 +26,7 @@ interface NetworkStore {
   mySide: Player | null;
   myName: string;
   isHost: boolean;
+  isPublic: boolean;
   players: RoomPlayer[];
   phase: GamePhase;
   chatItems: ChatItem[];
@@ -39,6 +40,7 @@ interface NetworkStore {
   setPhase: (phase: GamePhase) => void;
   addChatItem: (from: string, text: string, t: string, kind?: 'msg' | 'sys') => void;
   setPendingRemoteMove: (move: { sb: number; cell: number } | null) => void;
+  setIsPublic: (isPublic: boolean) => void;
 
   // Outgoing actions
   createRoom: (playerName: string, isPublic?: boolean, hostElo?: number, timeControl?: string) => string;
@@ -57,6 +59,7 @@ const INITIAL = {
   mySide: null as Player | null,
   myName: '',
   isHost: false,
+  isPublic: false,
   players: [] as RoomPlayer[],
   phase: 'lobby' as GamePhase,
   chatItems: [] as ChatItem[],
@@ -79,8 +82,9 @@ export const useNetworkStore = create<NetworkStore>()(
         chatItems: [...s.chatItems, { from, text, t, kind }],
       })),
       setPendingRemoteMove: (move) => set({ pendingRemoteMove: move }),
+      setIsPublic: (isPublic) => set({ isPublic }),
 
-      createRoom: (playerName, _isPublic = false, hostElo = 0, _timeControl = 'blitz') => {
+      createRoom: (playerName, isPublic = false, hostElo = 0, _timeControl = 'blitz') => {
         const code = generateCode();
         const hostPlayer: import('@/types/network.types').RoomPlayer = {
           name: playerName, side: 'X', isHost: true, ready: false, elo: hostElo, ping: 0,
@@ -90,6 +94,7 @@ export const useNetworkStore = create<NetworkStore>()(
           myName: playerName,
           mySide: 'X',
           isHost: true,
+          isPublic: isPublic,
           status: 'connecting',
           roomCode: code,
           players: [hostPlayer],

@@ -3,6 +3,7 @@ import { wsService } from '@/services/wsService';
 import { supabaseService } from '@/services/supabase.service';
 import { useNetworkStore } from '@/stores/network.store';
 import { useGameStore } from '@/stores/gameStore';
+import { playMatchFound } from '@/services/audioService';
 import type { ScreenName } from '@/types/game';
 
 function nowTime(): string {
@@ -47,6 +48,12 @@ export function useOnlineGame(navigate: (s: ScreenName) => void): {
           if (isHost) {
             const updatedPlayers = [...players, joiner];
             wsService.send({ type: 'room_state', players: updatedPlayers });
+            // Auto-start for public rooms when 2 players are present
+            const { isPublic, roomCode } = useNetworkStore.getState();
+            if (isPublic && updatedPlayers.length >= 2 && roomCode) {
+              void supabaseService.rooms.updateStatus(roomCode, 'playing').catch(() => {});
+              wsService.send({ type: 'game_started' });
+            }
           }
           break;
         }
@@ -64,6 +71,7 @@ export function useOnlineGame(navigate: (s: ScreenName) => void): {
           const opponent = players.find(p => p.name !== myName);
           const nameX = mySide === 'X' ? myName : (opponent?.name ?? 'Oponente');
           const nameO = mySide === 'O' ? myName : (opponent?.name ?? 'Oponente');
+          playMatchFound();
           setPhase('playing');
           startOnlineGame(nameX, nameO);
           navigate('game');
@@ -101,7 +109,7 @@ export function useOnlineGame(navigate: (s: ScreenName) => void): {
         wsService.joinGroup(code);
         wsService.send({ type: 'host_joined', name: playerName, side: 'X' });
         if (isPublic) {
-          await supabaseService.rooms.create({ code, hostName: playerName, hostElo, timeControl });
+          await supabaseService.rooms.create({ code, hostName: playerName, hostElo, timeControl, isPublic: true });
         }
       } catch (err) {
         console.error('[WS] createRoom failed:', err);

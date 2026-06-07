@@ -65,7 +65,7 @@ function SettingRow({ icon, label, value }: SettingRowProps): React.ReactElement
 }
 
 export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame, onSendChat }: ViewLobbyProps): React.ReactElement {
-  const { roomCode, players, isHost, phase, chatItems, status, mySide, myName, reset: resetNetwork } = useNetworkStore();
+  const { roomCode, players, isHost, phase, chatItems, status, mySide, myName, isPublic, reset: resetNetwork } = useNetworkStore();
   const leaveLobby = useMatchStore((s) => s.leaveLobby);
   const [chatInput, setChatInput] = React.useState('');
   const [copied, setCopied] = React.useState(false);
@@ -273,14 +273,14 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
                 ) : (
                   <span className="chip green"><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }}/> En línea</span>
                 )}
-                <span className="chip"><Icon name="lock" size={11}/> Privada</span>
+                <span className="chip"><Icon name={isPublic ? 'globe' : 'lock'} size={11}/> {isPublic ? 'Pública' : 'Privada'}</span>
                 {mySide && (
                   <span className="chip"><Icon name="user" size={11}/> Juegas como {mySide}</span>
                 )}
               </div>
             </div>
             <div className="spacer" />
-            {!isHost && (
+            {!isPublic && !isHost && (
               <button
                 className={`btn${isReady ? '' : ' primary'}`}
                 onClick={() => onReady?.(!isReady)}
@@ -288,7 +288,7 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
                 {isReady ? 'No listo' : 'Estoy listo'}
               </button>
             )}
-            {isHost && (
+            {!isPublic && isHost && (
               <button
                 className="btn primary lg"
                 disabled={!allReady}
@@ -296,6 +296,9 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
               >
                 <Icon name="play" size={14}/> Iniciar partida <Kbd>Enter</Kbd>
               </button>
+            )}
+            {isPublic && (
+              <span className="chip amber">Esperando oponente para iniciar…</span>
             )}
           </div>
         </div>
@@ -356,8 +359,8 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
         <div className="card" style={{ padding: 18 }}>
           <div className="t-h2" style={{ marginBottom: 14 }}>Configuración</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-            <SettingRow icon="lock" label="Privacidad" value="Privada · solo invitados" />
-            <SettingRow icon="gamepad" label="Modo" value="Online · Privado" />
+            <SettingRow icon={isPublic ? 'globe' : 'lock'} label="Privacidad" value={isPublic ? 'Pública · lista de salas' : 'Privada · solo invitados'} />
+            <SettingRow icon="gamepad" label="Modo" value={isPublic ? 'Online · Público' : 'Online · Privado'} />
           </div>
         </div>
       </div>

@@ -125,3 +125,22 @@ export function stopMusic(): void {
   });
   musicOscillators = [];
 }
+
+// Ascending alert chime for online match start / match found
+export function playMatchFound(): void {
+  const c = getCtx();
+  const notes = [392.00, 523.25, 659.25, 783.99]; // G4 C5 E5 G5
+  notes.forEach((freq, i) => {
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.connect(g); g.connect(sfxGain!);
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    const t = c.currentTime + i * 0.10;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.35, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    osc.start(t);
+    osc.stop(t + 0.55);
+  });
+}
