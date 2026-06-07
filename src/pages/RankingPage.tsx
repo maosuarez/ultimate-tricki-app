@@ -10,8 +10,6 @@ interface ViewRankingProps {
   redColor: string;
 }
 
-const SEASONS = ['Temporada 2', 'Temporada 3', 'Temporada 4'];
-
 const PODIUM_STYLE: Record<number, { bg: string; border: string; iconColor: string; iconName: string }> = {
   1: { bg: 'linear-gradient(140deg, rgba(234,179,8,.15), rgba(234,179,8,.05))',     border: 'rgba(234,179,8,.4)',    iconColor: '#EAB308', iconName: 'crown' },
   2: { bg: 'linear-gradient(140deg, rgba(148,163,184,.12), rgba(148,163,184,.04))', border: 'rgba(148,163,184,.35)', iconColor: '#94A3B8', iconName: 'medal' },
@@ -51,7 +49,6 @@ function PodiumCard({ entry }: PodiumCardProps): React.ReactElement {
 }
 
 export function ViewRanking({ navigate, blueColor: _blueColor, redColor: _redColor }: ViewRankingProps): React.ReactElement {
-  const [season, setSeason] = React.useState('Temporada 4');
   const { entries, myEntry, loading, error } = useRanking();
 
   const podium = entries.slice(0, 3);
@@ -68,20 +65,9 @@ export function ViewRanking({ navigate, blueColor: _blueColor, redColor: _redCol
           <div className="t-h1" style={{ marginBottom: 6 }}>Ranking Global</div>
         </div>
         <div className="spacer"/>
-        <div className="row" style={{ gap: 6, alignSelf: 'flex-end', paddingBottom: 2 }}>
-          {SEASONS.map(s => (
-            <button
-              key={s}
-              className="btn sm"
-              onClick={() => setSeason(s)}
-              style={{
-                background: s === season ? 'var(--card-hi)' : 'transparent',
-                border: s === season ? '1px solid var(--border-hi)' : '1px solid transparent',
-                color: s === season ? 'var(--text)' : 'var(--text-2)',
-              }}
-            >{s}</button>
-          ))}
-        </div>
+        <span className="chip amber" style={{ alignSelf: 'flex-end', marginBottom: 2, fontSize: 11 }}>
+          Temporada actual
+        </span>
       </div>
 
       {/* Loading / error states */}

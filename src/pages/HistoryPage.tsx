@@ -9,6 +9,7 @@ interface ViewHistoryProps {
   navigate: (screen: ScreenName) => void;
   blueColor: string;
   redColor: string;
+  onSelectReplay?: (match: RemoteMatch) => void;
 }
 
 // ─── Display helpers ──────────────────────────────────────────────────────────
@@ -142,7 +143,7 @@ function MatchRow({ match, userId, onReplay }: MatchRowProps): React.ReactElemen
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export function ViewHistory({ navigate, blueColor: _blueColor, redColor: _redColor }: ViewHistoryProps): React.ReactElement {
+export function ViewHistory({ navigate, blueColor: _blueColor, redColor: _redColor, onSelectReplay }: ViewHistoryProps): React.ReactElement {
   const { matches, loading, error } = useMatchHistory();
   const session = useUserStore((s) => s.session);
   const userId  = session?.userId ?? '';
@@ -170,7 +171,7 @@ export function ViewHistory({ navigate, blueColor: _blueColor, redColor: _redCol
           </div>
         </div>
         <div className="spacer" />
-        <button className="btn">
+        <button className="btn" disabled title="Próximamente" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
           <Icon name="database" size={14} /> Exportar PGN
         </button>
       </div>
@@ -217,7 +218,7 @@ export function ViewHistory({ navigate, blueColor: _blueColor, redColor: _redCol
                 <MatchRow
                   match={item.match}
                   userId={userId}
-                  onReplay={() => navigate('replay')}
+                  onReplay={() => { if (onSelectReplay) { onSelectReplay(item.match); } else { navigate('replay'); } }}
                 />
               </React.Fragment>
             );

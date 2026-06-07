@@ -102,6 +102,7 @@ interface ResultModalProps {
   initialTime: number;
   mode: 'local' | 'ai' | 'online' | 'custom_agent';
   onClose: () => void;
+  onRematch: () => void;
   blueColor: string;
   redColor: string;
   navigate: (s: ScreenName) => void;
@@ -146,7 +147,7 @@ const PlayerResult: FC<PlayerResultProps> = ({ name, captures, side, win, blueCo
   );
 };
 
-const ResultModal: FC<ResultModalProps> = ({ kind, playerX, playerO, xCaptures, oCaptures, movesCount, timeX, timeO, initialTime, mode, onClose, blueColor, redColor, navigate }) => {
+const ResultModal: FC<ResultModalProps> = ({ kind, playerX, playerO, xCaptures, oCaptures, movesCount, timeX, timeO, initialTime, mode, onClose, onRematch, blueColor, redColor, navigate }) => {
   const bgMap = {
     victory: 'radial-gradient(ellipse at top,rgba(34,197,94,0.18) 0%,transparent 70%)',
     defeat: 'radial-gradient(ellipse at top,rgba(239,68,68,0.18) 0%,transparent 70%)',
@@ -272,10 +273,10 @@ const ResultModal: FC<ResultModalProps> = ({ kind, playerX, playerO, xCaptures, 
           <button className="btn ghost" style={{ flex: 1 }} onClick={() => { navigate('home'); onClose(); }}>
             Inicio
           </button>
-          <button className="btn ghost" style={{ flex: 1 }} onClick={() => navigate('replay')}>
+          <button className="btn ghost" style={{ flex: 1 }} onClick={() => { navigate('replay'); onClose(); }}>
             Ver replay
           </button>
-          <button className="btn primary" style={{ flex: 1 }} onClick={onClose}>
+          <button className="btn primary" style={{ flex: 1 }} onClick={onRematch}>
             Revancha
           </button>
         </div>
@@ -484,53 +485,65 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-const Quick: FC<{ label: string; def: boolean }> = ({ label, def }) => {
-  const [on, setOn] = useState(def);
+interface QuickStoreProps {
+  label: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}
+
+const Quick: FC<QuickStoreProps> = ({ label, value, onChange }) => (
+  <div className="row" style={{ padding: '8px 0' }}>
+    <span style={{ fontSize: 13.5 }}>{label}</span>
+    <div className="spacer" />
+    <div className={`switch ${value ? 'on' : ''}`} onClick={() => onChange(!value)} />
+  </div>
+);
+
+const SettingsModal: FC<SettingsModalProps> = ({ onClose }) => {
+  const {
+    showCoordinates,
+    setShowCoordinates,
+    highlightLastMove,
+    setHighlightLastMove,
+    mutedAll,
+    setMutedAll,
+  } = useSettingsStore();
+
   return (
-    <div className="row" style={{ padding: '8px 0' }}>
-      <span style={{ fontSize: 13.5 }}>{label}</span>
-      <div className="spacer" />
-      <div className={`switch ${on ? 'on' : ''}`} onClick={() => setOn(!on)} />
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 50,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(4px)',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: 340,
+          background: 'var(--bg-2)',
+          border: '1px solid var(--border)',
+          borderRadius: 16,
+          padding: 24,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>Ajustes rápidos</div>
+        <Quick label="Mostrar coordenadas" value={showCoordinates} onChange={setShowCoordinates} />
+        <Quick label="Resaltar último movimiento" value={highlightLastMove} onChange={setHighlightLastMove} />
+        <Quick label="Silenciar audio" value={mutedAll} onChange={setMutedAll} />
+      </div>
     </div>
   );
 };
-
-const SettingsModal: FC<SettingsModalProps> = ({ onClose }) => (
-  <div
-    style={{
-      position: 'absolute',
-      inset: 0,
-      zIndex: 50,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'rgba(0,0,0,0.6)',
-      backdropFilter: 'blur(4px)',
-    }}
-    onClick={onClose}
-  >
-    <div
-      style={{
-        width: 340,
-        background: 'var(--bg-2)',
-        border: '1px solid var(--border)',
-        borderRadius: 16,
-        padding: 24,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>Ajustes rápidos</div>
-      <Quick label="Mostrar coordenadas" def={true} />
-      <Quick label="Resaltar último movimiento" def={true} />
-      <Quick label="Sonido del cronómetro" def={false} />
-      <Quick label="Mostrar miniatura meta-tablero" def={true} />
-      <Quick label="Auto-promover en último movimiento" def={false} />
-    </div>
-  </div>
-);
 
 export const UnderConstruction: FC<{ label: string; icon: string; navigate: (s: ScreenName) => void }> = ({ label, icon, navigate }) => (
   <div className="fade-in" style={{ padding: 28, overflow: 'auto', height: '100%' }}>
@@ -563,6 +576,9 @@ function App() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const { game, playerX, playerO, timeX, timeO, initialTime, mode } = useGameStore();
   const isGameActive = useGameStore((s) => s.isActive);
+  const startLocalGame = useGameStore((s) => s.startLocalGame);
+  const startAiGame = useGameStore((s) => s.startAiGame);
+  const aiAgentId = useGameStore((s) => s.aiAgentId);
 
   const xCaptures = game.sb.filter((s) => s.winner === 'X').length;
   const oCaptures = game.sb.filter((s) => s.winner === 'O').length;
@@ -639,6 +655,17 @@ function App() {
   const navigateToProfile = (userId: string) => {
     setViewingUserId(userId);
     setScreen('profile');
+  };
+
+  // Restart the current game with the same mode and settings
+  const handleRematch = () => {
+    setModal(null);
+    if (mode === 'ai' && aiAgentId) {
+      startAiGame(playerX, aiAgentId, initialTime);
+    } else {
+      startLocalGame(playerX, playerO, initialTime);
+    }
+    navigate('game');
   };
 
   useEffect(() => {
@@ -900,9 +927,6 @@ function App() {
               {getScreenTitle(screen)}
             </div>
             <div className="spacer" />
-            <button className="btn icon ghost" style={{ width: 26, height: 26 }}>
-              <Icon name="plus" size={13} />
-            </button>
           </div>
         )}
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
@@ -954,7 +978,12 @@ function App() {
             />
           )}
           {screen === 'history' && (
-            <ViewHistory navigate={navigate} blueColor={accentColor} redColor={oColor} />
+            <ViewHistory
+              navigate={navigate}
+              blueColor={accentColor}
+              redColor={oColor}
+              onSelectReplay={(match) => { setReplayMatch(match); navigate('replay'); }}
+            />
           )}
           {screen === 'replay' && (
             <ViewReplay
@@ -1002,6 +1031,7 @@ function App() {
               initialTime={initialTime}
               mode={mode}
               onClose={() => setModal(null)}
+              onRematch={handleRematch}
               blueColor={accentColor}
               redColor={oColor}
               navigate={navigate}
@@ -1056,21 +1086,8 @@ function App() {
       {/* Statusbar */}
       <div className="statusbar">
         <div className="pill">
-          <div className="dot g" />
-          <span>Online · EU-West</span>
-        </div>
-        <div className="pill">
-          <Icon name="wifi" size={11} />
-          <span>24 ms</span>
-        </div>
-        <div className="pill">
-          <span>jitter 4 ms</span>
-        </div>
-        <div className="pill">
-          <span>120 FPS</span>
-        </div>
-        <div className="pill">
-          <span>sync OK</span>
+          <div className={`dot ${session ? 'g' : ''}`} style={!session ? { background: 'var(--text-3)' } : undefined} />
+          <span>{session ? 'Online' : isGuest ? 'Invitado' : 'Sin sesión'}</span>
         </div>
         <div className="spacer" />
         <div className="pill">
@@ -1080,16 +1097,12 @@ function App() {
           <span>ELO {profile?.rating ?? '—'}</span>
         </div>
         <div className="pill">
-          <span style={{ color: 'var(--green)' }}>● </span>
-          <span>WS conectado</span>
-        </div>
-        <div className="pill">
           <Icon name="kbd" size={11} />
           <Kbd>?</Kbd>
           <span style={{ marginLeft: 4 }}>atajos</span>
         </div>
         <div className="pill">
-          <span>v2.1.0</span>
+          <span>v0.1.0</span>
         </div>
       </div>
     </div>

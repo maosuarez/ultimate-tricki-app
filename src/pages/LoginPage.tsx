@@ -271,7 +271,7 @@ export function ViewLogin({ navigate: _navigate, blueColor, onSignIn, onSignUp, 
                   />Recordarme
                 </label>
                 <div className="spacer" />
-                <a style={{ fontSize: 12, color: blueColor, textDecoration: 'none', cursor: 'pointer' }}>Olvidaste?</a>
+                <span style={{ fontSize: 12, color: 'var(--text-3)' }} title="Recuperación de contraseña próximamente">Olvidaste?</span>
               </div>
             )}
             {errorMsg && (
@@ -291,8 +291,8 @@ export function ViewLogin({ navigate: _navigate, blueColor, onSignIn, onSignUp, 
               <div style={{ flex: 1, height: 1, background: 'var(--border)' }}/>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <button type="button" className="btn"><Icon name="google" size={14}/> Google</button>
-              <button type="button" className="btn"><Icon name="github" size={14}/> GitHub</button>
+              <button type="button" className="btn" disabled title="Próximamente" style={{ opacity: 0.5, cursor: 'not-allowed' }}><Icon name="google" size={14}/> Google</button>
+              <button type="button" className="btn" disabled title="Próximamente" style={{ opacity: 0.5, cursor: 'not-allowed' }}><Icon name="github" size={14}/> GitHub</button>
             </div>
           </form>
         )}

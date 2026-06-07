@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icon, Avatar, Stat, ProgressBar } from '../components/ui';
+import { Icon, Avatar, Stat } from '../components/ui';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { usePublicProfile } from '@/hooks/usePublicProfile';
 import type { ScreenName } from '../types/game';
@@ -13,65 +13,6 @@ interface ViewProfileProps {
   redColor: string;
   /** When provided, shows the public profile of another user. Omit for own profile. */
   userId?: string;
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-interface InsightBarProps {
-  label: string;
-  v: number;
-  color: string;
-}
-
-function InsightBar({ label, v, color }: InsightBarProps): React.ReactElement {
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <div className="row" style={{ marginBottom: 4 }}>
-        <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{label}</span>
-        <div className="spacer"/>
-        <span className="t-mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>{v}%</span>
-      </div>
-      <ProgressBar value={v} color={color} />
-    </div>
-  );
-}
-
-interface EloChartProps {
-  blueColor: string;
-}
-
-function EloChart({ blueColor }: EloChartProps): React.ReactElement {
-  const data = [1772,1768,1775,1781,1769,1774,1788,1795,1789,1801,1798,1810,1804,1815,1808,1820,1817,1825,1819,1828,1830,1822,1835,1840,1832,1842,1838,1845,1809,1814];
-  const w = 600, h = 160, pad = 8;
-  const max = Math.max(...data), min = Math.min(...data);
-  const range = max - min || 1;
-  const pts: [number, number][] = data.map((v, i) => {
-    const x = pad + (i / (data.length - 1)) * (w - pad * 2);
-    const y = pad + (1 - (v - min) / range) * (h - pad * 2);
-    return [x, y];
-  });
-  const path = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0]},${p[1]}`).join(' ');
-  const lastPt = pts[pts.length - 1];
-  const firstPt = pts[0];
-  const area = path + ` L${lastPt[0]},${h} L${firstPt[0]},${h} Z`;
-
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height: 160, display: 'block' }}>
-      <defs>
-        <linearGradient id="elog" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={blueColor} stopOpacity="0.4"/>
-          <stop offset="100%" stopColor={blueColor} stopOpacity="0"/>
-        </linearGradient>
-      </defs>
-      {[0,1,2,3].map((i) => (
-        <line key={i} x1={0} x2={w} y1={pad + i * ((h-pad*2)/3)} y2={pad + i * ((h-pad*2)/3)} stroke="var(--border)" strokeWidth="1" strokeDasharray="2 4" />
-      ))}
-      <path d={area} fill="url(#elog)" />
-      <path d={path} fill="none" stroke={blueColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={lastPt[0]} cy={lastPt[1]} r="4" fill={blueColor} />
-      <circle cx={lastPt[0]} cy={lastPt[1]} r="8" fill={blueColor} fillOpacity="0.2" />
-    </svg>
-  );
 }
 
 // ─── Shared profile body ──────────────────────────────────────────────────────
@@ -168,30 +109,39 @@ function ProfileBody({
             <Stat label="Racha"    value={streakValue}     sub="actual"         accent="var(--amber)" />
           </div>
 
-          {/* ELO graph */}
+          {/* ELO graph — placeholder until real data is available */}
           <div className="card" style={{ padding: 20 }}>
             <div className="row" style={{ marginBottom: 14 }}>
-              <div className="t-h3">Progresión ELO · últimos 30 días</div>
+              <div className="t-h3">Progresión ELO</div>
               <div className="spacer"/>
-              <div className="row" style={{ gap: 6 }}>
-                <span className="chip">7d</span>
-                <span className="chip blue">30d</span>
-                <span className="chip">90d</span>
-              </div>
+              <span className="chip amber" style={{ fontSize: 11 }}>Próximamente</span>
             </div>
-            <EloChart blueColor={blueColor} />
+            <div style={{
+              height: 120,
+              display: 'grid',
+              placeItems: 'center',
+              color: 'var(--text-3)',
+              fontSize: 13,
+              borderRadius: 8,
+              background: 'var(--surface-2)',
+              border: '1px dashed var(--border)',
+            }}>
+              El historial ELO estará disponible próximamente
+            </div>
           </div>
         </div>
 
         {/* Right column — insights */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="card" style={{ padding: 18 }}>
-            <div className="t-h3" style={{ marginBottom: 14 }}>Patrones de juego</div>
-            <InsightBar label="Centro"   v={72} color={blueColor} />
-            <InsightBar label="Esquinas" v={54} color={blueColor} />
-            <InsightBar label="Bordes"   v={31} color={blueColor} />
-            <div className="divider" />
-            <InsightBar label="Como X"   v={68} color={blueColor} />
+            <div className="row" style={{ marginBottom: 14 }}>
+              <div className="t-h3">Patrones de juego</div>
+              <div className="spacer"/>
+              <span className="chip amber" style={{ fontSize: 11 }}>Próximamente</span>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', textAlign: 'center', padding: '16px 0' }}>
+              El análisis de patrones estará disponible próximamente
+            </div>
           </div>
           <div style={{ textAlign: 'center' as const }}>
             <button className="btn ghost sm" onClick={() => navigate('home')} style={{ marginTop: 4 }}>

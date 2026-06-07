@@ -128,6 +128,8 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
   const [mode, setMode] = React.useState<GameMode>('local');
   const [diff, setDiff] = React.useState<AIDiff>('hard');
   const [time, setTime] = React.useState<TimeControl>('blitz');
+  const [customMinutes, setCustomMinutes] = React.useState(7);
+  const [customIncrement, setCustomIncrement] = React.useState(4);
   const [_privacy, setPrivacy] = React.useState<Privacy>('public');
   const [templateSaved, setTemplateSaved] = React.useState(false);
   const [templates, setTemplates] = React.useState<GameTemplate[]>(() => loadTemplates());
@@ -170,16 +172,18 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
     if (t === 'none') return 9999;
     if (t === 'blitz') return 300;
     if (t === 'rapid') return 600;
+    if (t === 'custom') return Math.max(60, customMinutes * 60);
     return 420;
   }
 
   const handleCreate = () => {
     const secs = timeToSeconds(time);
+    const myName = playerName.trim() || 'Jugador 1';
     if (mode === 'local') {
-      startLocalGame('Jugador 1', 'Jugador 2', secs);
+      startLocalGame(myName, 'Jugador 2', secs);
       navigate('game');
     } else if (mode === 'ai') {
-      startAiGame('Jugador 1', 'builtin.flat_mc.easy', secs);
+      startAiGame(myName, 'builtin.flat_mc.easy', secs);
       navigate('game');
     } else if (mode === 'online' && onCreateRoom) {
       onCreateRoom(playerName, true, 0, time);
@@ -192,7 +196,7 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
 
   const modeLabel = mode === 'online' ? 'Online · Ranked' : mode === 'ai' ? 'vs IA' : mode === 'local' ? 'Local' : 'Privada';
   const diffLabel = diff === 'easy' ? 'Fácil' : diff === 'med' ? 'Medio' : diff === 'hard' ? 'Difícil' : 'Experto';
-  const timeLabel = time === 'blitz' ? '5+3' : time === 'rapid' ? '10+5' : time === 'none' ? 'sin límite' : '7+4';
+  const timeLabel = time === 'blitz' ? '5+3' : time === 'rapid' ? '10+5' : time === 'none' ? 'sin límite' : `${customMinutes}+${customIncrement}`;
 
   const isDisabled = (mode === 'online' && !onCreateRoom) || (mode === 'private' && !onCreateRoom);
   const timeStep = mode === 'ai' ? 3 : 2;
@@ -295,11 +299,11 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
                 <div>
                   <div className="t-cap" style={{ marginBottom: 4 }}>Minutos base</div>
-                  <input className="input mono" defaultValue="7" />
+                  <input className="input mono" value={customMinutes} onChange={e => setCustomMinutes(Math.max(1, parseInt(e.target.value) || 1))} type="number" min="1" max="60" />
                 </div>
                 <div>
                   <div className="t-cap" style={{ marginBottom: 4 }}>Incremento por jugada (s)</div>
-                  <input className="input mono" defaultValue="4" />
+                  <input className="input mono" value={customIncrement} onChange={e => setCustomIncrement(Math.max(0, parseInt(e.target.value) || 0))} type="number" min="0" max="60" />
                 </div>
               </div>
             )}

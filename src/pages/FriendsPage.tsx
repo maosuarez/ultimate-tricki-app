@@ -33,7 +33,7 @@ function FriendRow({ friend, onViewProfile }: FriendRowProps): React.ReactElemen
         </div>
       </div>
       {friend.onlineStatus === 'online' && (
-        <button className="btn sm" title="Invitar a partida"><Icon name="play" size={13}/> Invitar</button>
+        <button className="btn sm" disabled title="Invitar (próximamente)" style={{ opacity: 0.5, cursor: 'not-allowed' }}><Icon name="play" size={13}/> Invitar</button>
       )}
       <button
         className="btn icon ghost"
