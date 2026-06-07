@@ -4,7 +4,7 @@
 // already-persisted matches (guarded by a ref).
 
 import { useEffect, useRef } from 'react';
-import type { Player } from '@/types/game';
+import type { Player, MoveHistory } from '@/types/game';
 import type { MatchResult } from '@/types/match.types';
 import { useGameStore } from '@/stores/gameStore';
 import { useUserStore } from '@/stores/userStore';
@@ -78,6 +78,10 @@ export function useSaveCompletedMatch(gameWinner: Player | 'draw' | null): void 
     // schema (which only knows 'ai' | 'local' | 'online') continues to work.
     const persistedMode = mode === 'custom_agent' ? 'ai' : mode;
 
+    // Snapshot the move history now — the store may be reset before the async
+    // saveMatch promise resolves.
+    const historySnapshot: MoveHistory[] = [...game.history];
+
     const matchData = {
       id:              crypto.randomUUID(),
       mode:            persistedMode,
@@ -97,7 +101,21 @@ export function useSaveCompletedMatch(gameWinner: Player | 'draw' | null): void 
       createdAt:       now,
     };
 
-    supabaseService.matches.saveMatch(matchData).catch((err: unknown) => {
+    supabaseService.matches.saveMatch(matchData).then((saved) => {
+      // Persist move history so replays work.
+      const moveRows = historySnapshot.map((m: MoveHistory, i) => ({
+        moveNumber:  i + 1,
+        player:      m.by === 'X' ? ('x' as const) : ('o' as const),
+        macroRow:    Math.floor(m.sb / 3),
+        macroCol:    m.sb % 3,
+        microRow:    Math.floor(m.cell / 3),
+        microCol:    m.cell % 3,
+        timestampMs: Date.now(), // wall-clock approximation; per-move timing not tracked
+      }));
+      supabaseService.matches.saveMatchMoves(saved.id, moveRows).catch((err: unknown) => {
+        console.error('[useSaveCompletedMatch] Failed to persist moves:', err);
+      });
+    }).catch((err: unknown) => {
       // Non-fatal — the game UX must not be blocked by a persistence failure.
       console.error('[useSaveCompletedMatch] Failed to persist match:', err);
     });

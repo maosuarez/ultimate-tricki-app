@@ -6,11 +6,13 @@ import { useGameStore } from '../stores/gameStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useNetworkStore } from '../stores/network.store';
 import { useMatchStore } from '../stores/matchStore';
+import { useUserStore } from '../stores/userStore';
 import { playMove, playSubBoardCapture } from '../services/audioService';
 import { useAIAgent } from '../hooks/useAIAgent';
 import { useAgentGame } from '../hooks/useAgentGame';
 import { useSaveCompletedMatch } from '../hooks/useSaveCompletedMatch';
 import { pythonAgentService } from '../services/pythonAgentService';
+import { supabaseService } from '../services/supabase.service';
 
 interface ViewGameProps {
   blueColor: string;
@@ -174,9 +176,10 @@ export function ViewGame({
 }: ViewGameProps): React.ReactElement {
   const { game, makeMove, playerX, playerO, chatMessages, gameWinner, isActive, timeX, timeO, tickTimer, aiAgentId, botSide, mode } = useGameStore();
   const { showCoordinates, highlightLastMove } = useSettingsStore();
-  const { mySide, pendingRemoteMove, setPendingRemoteMove } = useNetworkStore();
+  const { mySide, isHost, pendingRemoteMove, setPendingRemoteMove } = useNetworkStore();
   const agentSessionId = useMatchStore((s) => s.agentSessionId);
   const clearAgentSession = useMatchStore((s) => s.clearAgentSession);
+  const { session, isGuest } = useUserStore();
 
   const chatRef = React.useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = React.useState<'Eventos' | 'Movimientos'>('Movimientos');
@@ -242,6 +245,58 @@ export function ViewGame({
       console.error('[useAgentGame] endSession failed:', err);
     });
     clearAgentSession();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameWinner, mode]);
+
+  // Persist online match header + moves to Supabase when the game ends.
+  // Only the host writes to avoid double-inserts from both clients.
+  const onlineSavedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (mode !== 'online') return;
+    if (gameWinner === null) { onlineSavedRef.current = false; return; }
+    if (onlineSavedRef.current) return;
+    if (isGuest || !session) return;
+    if (!isHost) return; // Only one client writes the record
+
+    onlineSavedRef.current = true;
+
+    const now = new Date().toISOString();
+    const historySnapshot: MoveHistory[] = [...game.history];
+    const matchId = crypto.randomUUID();
+
+    const matchData = {
+      id:              matchId,
+      mode:            'online' as const,
+      playerXId:       session.userId, // host is always X
+      playerOId:       null,           // opponent ID not available client-side
+      playerXName:     playerX,
+      playerOName:     playerO,
+      result:          gameWinner === 'draw' ? ('draw' as const) : gameWinner === 'X' ? ('x_wins' as const) : ('o_wins' as const),
+      totalMoves:      historySnapshot.length,
+      durationSeconds: 0, // timer tracking not wired for online — approximated
+      ratingChangeX:   0,
+      ratingChangeO:   0,
+      startedAt:       now,
+      endedAt:         now,
+      createdAt:       now,
+    };
+
+    supabaseService.matches.saveMatch(matchData).then((saved) => {
+      const moveRows = historySnapshot.map((m: MoveHistory, i) => ({
+        moveNumber:  i + 1,
+        player:      m.by === 'X' ? ('x' as const) : ('o' as const),
+        macroRow:    Math.floor(m.sb / 3),
+        macroCol:    m.sb % 3,
+        microRow:    Math.floor(m.cell / 3),
+        microCol:    m.cell % 3,
+        timestampMs: Date.now(),
+      }));
+      supabaseService.matches.saveMatchMoves(saved.id, moveRows).catch((err: unknown) => {
+        console.error('[GamePage] Failed to persist online match moves:', err);
+      });
+    }).catch((err: unknown) => {
+      console.error('[GamePage] Failed to persist online match:', err);
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameWinner, mode]);
 
@@ -461,13 +516,16 @@ export function ViewGame({
         <div className="card" style={{ padding: 14 }}>
           <div className="row" style={{ marginBottom: 10 }}>
             <span className="chip blue">
-              <Icon name={aiAgentId ? 'cpu' : 'bolt'} size={11}/> {aiAgentId ? 'vs IA · Flattie' : 'Local · 5+0'}
+              <Icon name={mode === 'ai' || mode === 'custom_agent' ? 'cpu' : mode === 'online' ? 'globe' : 'bolt'} size={11}/>
+              {mode === 'ai' ? 'vs IA · Flattie' : mode === 'custom_agent' ? 'vs ' + playerO : mode === 'online' ? 'Online' : 'Local'}
             </span>
             <div className="spacer" />
-            <span className="t-cap t-mono">{aiAgentId ? 'IA' : 'LOCAL'}</span>
+            <span className="t-cap t-mono">{mode === 'online' ? 'ONLINE' : mode === 'ai' || mode === 'custom_agent' ? 'IA' : 'LOCAL'}</span>
           </div>
           <div className="t-tag" style={{ marginBottom: 4 }}>Modo</div>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>Local · Dos jugadores</div>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>
+            {mode === 'ai' ? playerX + ' vs Flattie' : mode === 'custom_agent' ? playerX + ' vs ' + playerO : mode === 'online' ? 'Online · Ranked' : playerX + ' vs ' + playerO}
+          </div>
         </div>
 
         <PlayerCard
