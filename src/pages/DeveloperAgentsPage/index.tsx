@@ -3,18 +3,15 @@ import { open, save } from '@tauri-apps/plugin-dialog';
 import { Icon } from '../../components/ui';
 import type { ScreenName } from '../../types/game';
 import type { PythonAgentInfo } from '../../types/agent.types';
-import { pythonAgentService } from '../../services/pythonAgentService';
+import { pythonAgentService } from '@/services/native/python-agent.service';
+import { isTauri } from '@/services/transport/localTransport';
 import { useGameStore } from '../../stores/gameStore';
 import { useMatchStore } from '../../stores/matchStore';
 import { useUserStore } from '../../stores/userStore';
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
 export interface ViewDeveloperAgentsProps {
   navigate: (screen: ScreenName) => void;
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) => {
   const [agents, setAgents] = useState<PythonAgentInfo[]>([]);
@@ -36,7 +33,7 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
 
   const startAgentGame = useGameStore((s) => s.startAgentGame);
   const setAgentSession = useMatchStore((s) => s.setAgentSession);
-  const displayName = useUserStore((s) => s.profile?.displayName ?? 'Jugador');
+  const displayName = useUserStore((s) => s.profile?.displayName ?? 'Player');
 
   const loadAgents = () => {
     setLoading(true);
@@ -69,7 +66,7 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
       })
       .catch((e: unknown) => {
         const msg = e instanceof Error ? e.message : String(e);
-        setError(`No se pudo iniciar el agente: ${msg}`);
+        setError(`Could not start agent: ${msg}`);
       })
       .finally(() => {
         setStartingAgent(null);
@@ -77,12 +74,16 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
   };
 
   const handleOpenFolder = async () => {
+    if (!isTauri()) {
+      setError('Local filesystem folder access is only available on the desktop version.');
+      return;
+    }
     setOpeningFolder(true);
     try {
       await pythonAgentService.openAgentsFolder();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(`No se pudo abrir la carpeta: ${msg}`);
+      setError(`Could not open folder: ${msg}`);
     } finally {
       setOpeningFolder(false);
     }
@@ -90,6 +91,10 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
 
   const handleCopyTemplate = async () => {
     if (copyingTemplate) return;
+    if (!isTauri()) {
+      setError('Direct local filesystem download requires the desktop version.');
+      return;
+    }
     setCopyingTemplate(true);
     try {
       const destPath = await save({
@@ -106,7 +111,7 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
       }, 3000);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(`No se pudo guardar la plantilla: ${msg}`);
+      setError(`Could not save template: ${msg}`);
     } finally {
       setCopyingTemplate(false);
     }
@@ -114,6 +119,10 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
 
   const handleLoadAgent = async () => {
     if (loadingAgent) return;
+    if (!isTauri()) {
+      setError('Loading agents from the local filesystem requires the desktop version.');
+      return;
+    }
     setLoadingAgent(true);
     try {
       const selected = await open({
@@ -126,7 +135,7 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
       loadAgents();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(`No se pudo cargar el agente: ${msg}`);
+      setError(`Could not load agent: ${msg}`);
     } finally {
       setLoadingAgent(false);
     }
@@ -150,30 +159,50 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
       {/* Header */}
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
         <button className="btn ghost sm" onClick={() => navigate('home')}>
-          <Icon name="arrow-l" size={14} /> Inicio
+          <Icon name="arrow-l" size={14} /> Home
         </button>
         <div style={{ flex: 1 }} />
-        <span className="chip amber">Vista de desarrollador</span>
+        <span className="chip amber">Developer View</span>
       </div>
 
       <div style={{ marginBottom: 20 }}>
-        <div className="t-h1" style={{ marginBottom: 4 }}>Agentes Python</div>
+        <div className="t-h1" style={{ marginBottom: 4 }}>Python Agents</div>
         <div className="muted" style={{ fontSize: 13.5 }}>
-          Carga agentes personalizados escritos en Python y juega contra ellos.
+          Load custom Python agents and play matches against them.
         </div>
       </div>
+
+      {!isTauri() && (
+        <div
+          style={{
+            background: 'rgba(234, 179, 8, 0.1)',
+            border: '1px solid rgba(234, 179, 8, 0.3)',
+            borderRadius: 8,
+            padding: '10px 14px',
+            marginBottom: 20,
+            fontSize: 13,
+            color: '#f59e0b',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <Icon name="info" size={16} />
+          <span>Web Mode active: Python agents and local filesystem access require the desktop app.</span>
+        </div>
+      )}
 
       {/* Actions bar */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
         <button className="btn ghost sm" onClick={loadAgents} disabled={loading}>
-          <Icon name="replay" size={13} /> Recargar
+          <Icon name="replay" size={13} /> Reload
         </button>
         <button
           className="btn ghost sm"
           onClick={() => void handleOpenFolder()}
           disabled={openingFolder}
         >
-          <Icon name="plus" size={13} /> Abrir carpeta de agentes
+          <Icon name="plus" size={13} /> Open agents folder
         </button>
         <button
           className="btn ghost sm"
@@ -181,14 +210,14 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
           disabled={copyingTemplate}
         >
           <Icon name={templateCopied ? 'check' : 'download'} size={13} />
-          {templateCopied ? 'Plantilla lista' : 'Descargar plantilla'}
+          {templateCopied ? 'Template ready' : 'Download template'}
         </button>
         <button
           className="btn ghost sm"
           onClick={() => void handleLoadAgent()}
           disabled={loadingAgent}
         >
-          <Icon name="plus" size={13} /> Cargar agente
+          <Icon name="plus" size={13} /> Load agent
         </button>
       </div>
 
@@ -204,14 +233,14 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
             marginBottom: 16,
           }}
         >
-          Plantilla guardada en {savedTemplatePath}
+          Template saved to {savedTemplatePath}
         </div>
       )}
 
       {/* Agent list */}
       {loading && (
         <div style={{ color: 'var(--fg-muted)', fontSize: 13.5, padding: '12px 0' }}>
-          Cargando agentes...
+          Loading agents...
         </div>
       )}
 
@@ -227,7 +256,7 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
             marginBottom: 16,
           }}
         >
-          Error al cargar agentes: {error}
+          Error loading agents: {error}
         </div>
       )}
 
@@ -263,27 +292,25 @@ export const ViewDeveloperAgents: FC<ViewDeveloperAgentsProps> = ({ navigate }) 
         }}
       >
         <div style={{ fontWeight: 700, marginBottom: 6, color: 'var(--fg)' }}>
-          Protocolo de comunicación
+          Communication Protocol
         </div>
         <div>
-          Rust env&iacute;a al agente por stdin:{' '}
+          Host sends to agent via stdin:{' '}
           <code style={{ fontSize: 11.5 }}>
             {'{'}board, active_subboard, player, valid_moves{'}'}
           </code>
         </div>
         <div style={{ marginTop: 4 }}>
-          El agente debe responder por stdout:{' '}
+          Agent must respond via stdout:{' '}
           <code style={{ fontSize: 11.5 }}>{'{'}{"move"}: [macro_row, macro_col]{'}'}</code>
         </div>
         <div style={{ marginTop: 4 }}>
-          Timeout: <strong>5 segundos</strong> por movimiento.
+          Timeout: <strong>5 seconds</strong> per move.
         </div>
       </div>
     </div>
   );
 };
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
 
 const EmptyState: FC = () => (
   <div
@@ -312,9 +339,9 @@ const EmptyState: FC = () => (
       <Icon name="cpu" size={28} style={{ color: 'var(--fg-muted)' }} />
     </div>
     <div>
-      <div className="t-h1" style={{ marginBottom: 8 }}>Sin agentes</div>
+      <div className="t-h1" style={{ marginBottom: 8 }}>No Agents Found</div>
       <div className="muted" style={{ fontSize: 13, maxWidth: 320 }}>
-        Crea un archivo <code>.py</code> con una clase <code>Agent</code> y guárdalo en{' '}
+        Create a <code>.py</code> file defining an <code>Agent</code> class and save it to{' '}
         <code style={{ whiteSpace: 'nowrap' }}>~/.tricki/agents/</code>
       </div>
     </div>
@@ -330,7 +357,7 @@ const EmptyState: FC = () => (
         lineHeight: 1.7,
       }}
     >
-      <div style={{ color: 'var(--green)' }}># ~/.tricki/agents/mi_agente.py</div>
+      <div style={{ color: 'var(--green)' }}># ~/.tricki/agents/my_agent.py</div>
       <div>class Agent:</div>
       <div>&nbsp;&nbsp;def mount(self): pass</div>
       <div>&nbsp;&nbsp;def act(self, state) -&gt; tuple:</div>
@@ -379,7 +406,7 @@ const AgentCard: FC<AgentCardProps> = ({ agent, onPlay, isStarting, disabled, on
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontWeight: 700, fontSize: 14 }}>{agent.name}</span>
         {disabled && (
-          <span className="chip" style={{ fontSize: 10, opacity: 0.8 }}>Desactivado</span>
+          <span className="chip" style={{ fontSize: 10, opacity: 0.8 }}>Disabled</span>
         )}
       </div>
       <div
@@ -399,14 +426,14 @@ const AgentCard: FC<AgentCardProps> = ({ agent, onPlay, isStarting, disabled, on
       className="btn ghost sm"
       onClick={() => onToggle(agent.path)}
     >
-      {disabled ? 'Activar' : 'Desactivar'}
+      {disabled ? 'Enable' : 'Disable'}
     </button>
     <button
       className="btn primary sm"
       onClick={() => onPlay(agent)}
       disabled={isStarting || disabled}
     >
-      {isStarting ? 'Iniciando...' : 'Jugar'}
+      {isStarting ? 'Starting...' : 'Play'}
     </button>
   </div>
 );

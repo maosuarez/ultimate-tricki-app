@@ -8,7 +8,6 @@ interface ViewFriendsProps {
   navigate: (screen: ScreenName) => void;
   blueColor: string;
   redColor: string;
-  /** Navigate to a public profile by user id */
   navigateToProfile?: (userId: string) => void;
 }
 
@@ -33,16 +32,16 @@ function FriendRow({ friend, onViewProfile }: FriendRowProps): React.ReactElemen
         </div>
       </div>
       {friend.onlineStatus === 'online' && (
-        <button className="btn sm" disabled title="Invitar (próximamente)" style={{ opacity: 0.5, cursor: 'not-allowed' }}><Icon name="play" size={13}/> Invitar</button>
+        <button className="btn sm" disabled title="Invite (coming soon)" style={{ opacity: 0.5, cursor: 'not-allowed' }}><Icon name="play" size={13}/> Invite</button>
       )}
       <button
         className="btn icon ghost"
-        title="Ver perfil"
+        title="View profile"
         onClick={() => onViewProfile?.(friend.profile.id)}
       >
         <Icon name="user" size={14}/>
       </button>
-      <button className="btn icon ghost" title="Más opciones"><Icon name="more" size={14}/></button>
+      <button className="btn icon ghost" title="More options"><Icon name="more" size={14}/></button>
     </div>
   );
 }
@@ -120,9 +119,9 @@ export function ViewFriends({ navigate, blueColor: _blueColor, redColor: _redCol
         <div className="row" style={{ marginBottom: 16, alignItems: 'flex-start' }}>
           <div>
             <button className="btn ghost sm" onClick={() => navigate('home')} style={{ marginBottom: 10 }}>
-              <Icon name="arrow-l" size={14}/> Inicio
+              <Icon name="arrow-l" size={14}/> Home
             </button>
-            <div className="t-h1">Mis amigos</div>
+            <div className="t-h1">My Friends</div>
           </div>
           <div className="spacer"/>
           <button
@@ -130,25 +129,25 @@ export function ViewFriends({ navigate, blueColor: _blueColor, redColor: _redCol
             style={{ alignSelf: 'flex-end', marginBottom: 2 }}
             onClick={() => { setShowAdd(v => !v); setSendError(null); }}
           >
-            <Icon name="plus" size={14}/> Agregar amigo
+            <Icon name="plus" size={14}/> Add Friend
           </button>
         </div>
 
         {/* Add friend panel */}
         {showAdd && (
           <div className="card" style={{ padding: 14, marginBottom: 14 }}>
-            <div className="t-h3" style={{ marginBottom: 10 }}>Agregar amigo</div>
+            <div className="t-h3" style={{ marginBottom: 10 }}>Add Friend</div>
             <div className="row" style={{ gap: 8 }}>
               <input
                 className="input"
-                placeholder="Nombre de usuario..."
+                placeholder="Username..."
                 value={addInput}
                 onChange={e => setAddInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') void handleSendRequest(); }}
                 style={{ flex: 1, padding: '8px 12px', fontSize: 13 }}
               />
               <button className="btn primary sm" onClick={() => void handleSendRequest()}>
-                <Icon name="send" size={13}/> Enviar solicitud
+                <Icon name="send" size={13}/> Send Request
               </button>
               <button className="btn ghost sm" onClick={() => { setShowAdd(false); setSendError(null); }}>
                 <Icon name="x" size={13}/>
@@ -168,7 +167,7 @@ export function ViewFriends({ navigate, blueColor: _blueColor, redColor: _redCol
           <Icon name="search" size={14} style={{ color: 'var(--text-3)' }}/>
           <input
             style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 13, width: '100%' }}
-            placeholder="Buscar amigos..."
+            placeholder="Search friends..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -176,7 +175,7 @@ export function ViewFriends({ navigate, blueColor: _blueColor, redColor: _redCol
 
         {/* Loading / error states */}
         {loading && (
-          <div className="t-cap" style={{ textAlign: 'center', padding: 32 }}>Cargando…</div>
+          <div className="t-cap" style={{ textAlign: 'center', padding: 32 }}>Loading…</div>
         )}
         {error && !loading && (
           <div className="t-cap" style={{ textAlign: 'center', padding: 32, color: 'var(--red)' }}>
@@ -188,36 +187,36 @@ export function ViewFriends({ navigate, blueColor: _blueColor, redColor: _redCol
         {!loading && (
           <>
             {filtOnline.length > 0 && (
-              <Section title="En línea ahora" count={filtOnline.length}>
+              <Section title="Online Now" count={filtOnline.length}>
                 {filtOnline.map(f => <FriendRow key={f.friendship.id} friend={f} onViewProfile={navigateToProfile} />)}
               </Section>
             )}
             {filtAway.length > 0 && (
-              <Section title="Ausentes" count={filtAway.length}>
+              <Section title="Away" count={filtAway.length}>
                 {filtAway.map(f => <FriendRow key={f.friendship.id} friend={f} onViewProfile={navigateToProfile} />)}
               </Section>
             )}
             {filtOffline.length > 0 && (
-              <Section title="Sin conexión" count={filtOffline.length}>
+              <Section title="Offline" count={filtOffline.length}>
                 {filtOffline.map(f => <FriendRow key={f.friendship.id} friend={f} onViewProfile={navigateToProfile} />)}
               </Section>
             )}
             {filtered.length === 0 && search.trim() !== '' && (
               <div style={{ textAlign: 'center', color: 'var(--text-3)', padding: '32px 0', fontSize: 13 }}>
                 <Icon name="search" size={20} style={{ display: 'block', margin: '0 auto 8px' }}/>
-                Sin resultados para "{search}"
+                No results for "{search}"
               </div>
             )}
             {filtered.length === 0 && search.trim() === '' && !loading && (
               <div style={{ textAlign: 'center', color: 'var(--text-3)', padding: '32px 0', fontSize: 13 }}>
-                Todavía no tienes amigos agregados
+                You haven't added any friends yet
               </div>
             )}
           </>
         )}
 
         <div className="t-cap" style={{ color: 'var(--text-3)', marginTop: 'auto', paddingTop: 8 }}>
-          {onlineCount} en línea · {awayCount} ausentes · {offlineCount} sin conexión — {friends.length} amigos en total
+          {onlineCount} online · {awayCount} away · {offlineCount} offline — {friends.length} friends total
         </div>
       </div>
 
@@ -226,13 +225,13 @@ export function ViewFriends({ navigate, blueColor: _blueColor, redColor: _redCol
         {/* Requests */}
         <div className="card" style={{ padding: 16 }}>
           <div className="row" style={{ marginBottom: 12 }}>
-            <div className="t-h3">Solicitudes</div>
+            <div className="t-h3">Requests</div>
             {requests.length > 0 && (
               <span className="chip amber" style={{ marginLeft: 8 }}>{requests.length}</span>
             )}
           </div>
           {requests.length === 0 ? (
-            <div className="t-cap" style={{ color: 'var(--text-3)', fontSize: 13 }}>Sin solicitudes pendientes</div>
+            <div className="t-cap" style={{ color: 'var(--text-3)', fontSize: 13 }}>No pending requests</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {requests.map((r, i) => (
@@ -253,14 +252,14 @@ export function ViewFriends({ navigate, blueColor: _blueColor, redColor: _redCol
                       style={{ flex: 1 }}
                       onClick={() => void acceptRequest(r.friendship.id)}
                     >
-                      <Icon name="check" size={12}/> Aceptar
+                      <Icon name="check" size={12}/> Accept
                     </button>
                     <button
                       className="btn ghost sm"
                       style={{ flex: 1 }}
                       onClick={() => void rejectRequest(r.friendship.id)}
                     >
-                      <Icon name="x" size={12}/> Rechazar
+                      <Icon name="x" size={12}/> Decline
                     </button>
                   </div>
                 </div>
@@ -271,9 +270,9 @@ export function ViewFriends({ navigate, blueColor: _blueColor, redColor: _redCol
 
         {/* Suggested */}
         <div className="card" style={{ padding: 16 }}>
-          <div className="t-h3" style={{ marginBottom: 12 }}>Sugeridos</div>
+          <div className="t-h3" style={{ marginBottom: 12 }}>Suggested</div>
           {suggested.length === 0 ? (
-            <div className="t-cap" style={{ color: 'var(--text-3)', fontSize: 13 }}>Sin sugerencias disponibles</div>
+            <div className="t-cap" style={{ color: 'var(--text-3)', fontSize: 13 }}>No suggestions available</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {suggested.map(s => (
@@ -284,7 +283,7 @@ export function ViewFriends({ navigate, blueColor: _blueColor, redColor: _redCol
                     <div className="t-cap">ELO {s.rating}</div>
                   </div>
                   <button className="btn sm" onClick={() => { void sendRequest(s.username); }}>
-                    <Icon name="plus" size={12}/> Agregar
+                    <Icon name="plus" size={12}/> Add
                   </button>
                 </div>
               ))}

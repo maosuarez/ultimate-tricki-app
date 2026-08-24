@@ -1,5 +1,5 @@
 import React from 'react';
-import { agentService } from '../services/agentService';
+import { agentService } from '@/services/native/agent.service';
 import type { AgentMove } from '../types/agent';
 import type { GameState } from '../types/game';
 

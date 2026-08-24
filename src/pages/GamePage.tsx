@@ -7,12 +7,12 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { useNetworkStore } from '../stores/network.store';
 import { useMatchStore } from '../stores/matchStore';
 import { useUserStore } from '../stores/userStore';
-import { playMove, playSubBoardCapture } from '../services/audioService';
+import { playMove, playSubBoardCapture } from '@/services/audio.service';
 import { useAIAgent } from '../hooks/useAIAgent';
 import { useAgentGame } from '../hooks/useAgentGame';
 import { useSaveCompletedMatch } from '../hooks/useSaveCompletedMatch';
-import { pythonAgentService } from '../services/pythonAgentService';
-import { supabaseService } from '../services/supabase.service';
+import { pythonAgentService } from '@/services/native/python-agent.service';
+import { supabaseService } from '@/services/supabase.service';
 
 interface ViewGameProps {
   blueColor: string;
@@ -78,7 +78,7 @@ function PlayerCard({ name, elo, country, color, side, timeLabel, active, captur
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontWeight: 700, fontSize: 13 }}>{name}</span>
-            {isYou && <span className="chip" style={{ padding: '1px 6px', fontSize: 9 }}>TÚ</span>}
+            {isYou && <span className="chip" style={{ padding: '1px 6px', fontSize: 9 }}>YOU</span>}
           </div>
           <div className="t-cap t-mono">{elo !== undefined ? `ELO ${elo} · ${country}` : '— Local'}</div>
         </div>
@@ -87,7 +87,7 @@ function PlayerCard({ name, elo, country, color, side, timeLabel, active, captur
             fontSize: 22, fontWeight: 700, letterSpacing: '-.01em',
             color: active ? color : 'var(--text-2)',
           }}>{timeLabel}</div>
-          <div className="t-cap" style={{ textAlign: 'right' }}>{captures} subt.</div>
+          <div className="t-cap" style={{ textAlign: 'right' }}>{captures} boards</div>
         </div>
       </div>
       {active && (
@@ -182,9 +182,9 @@ export function ViewGame({
   const { session, isGuest } = useUserStore();
 
   const chatRef = React.useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = React.useState<'Eventos' | 'Movimientos'>('Movimientos');
+  const [activeTab, setActiveTab] = React.useState<'Events' | 'Moves'>('Moves');
 
-  // Built-in Flattie agent
+  // Built-in AI agent
   const { requestMove, isReady: aiReady } = useAIAgent(mode === 'ai' ? (aiAgentId ?? null) : null);
   const [isThinkingBuiltin, setIsThinkingBuiltin] = React.useState(false);
 
@@ -214,7 +214,7 @@ export function ViewGame({
     }
   }, [historyLength, game.sb]);
 
-  // Trigger built-in Flattie move when it's the bot's turn (mode === 'ai')
+  // Trigger built-in AI move when it's the bot's turn (mode === 'ai')
   React.useEffect(() => {
     if (!aiReady || !requestMove) return;
     if (!botSide) return;
@@ -249,14 +249,13 @@ export function ViewGame({
   }, [gameWinner, mode]);
 
   // Persist online match header + moves to Supabase when the game ends.
-  // Only the host writes to avoid double-inserts from both clients.
   const onlineSavedRef = React.useRef(false);
   React.useEffect(() => {
     if (mode !== 'online') return;
     if (gameWinner === null) { onlineSavedRef.current = false; return; }
     if (onlineSavedRef.current) return;
     if (isGuest || !session) return;
-    if (!isHost) return; // Only one client writes the record
+    if (!isHost) return;
 
     onlineSavedRef.current = true;
 
@@ -267,13 +266,13 @@ export function ViewGame({
     const matchData = {
       id:              matchId,
       mode:            'online' as const,
-      playerXId:       session.userId, // host is always X
-      playerOId:       null,           // opponent ID not available client-side
+      playerXId:       session.userId,
+      playerOId:       null,
       playerXName:     playerX,
       playerOName:     playerO,
       result:          gameWinner === 'draw' ? ('draw' as const) : gameWinner === 'X' ? ('x_wins' as const) : ('o_wins' as const),
       totalMoves:      historySnapshot.length,
-      durationSeconds: 0, // timer tracking not wired for online — approximated
+      durationSeconds: 0,
       ratingChangeX:   0,
       ratingChangeO:   0,
       startedAt:       now,
@@ -351,10 +350,8 @@ export function ViewGame({
       }
     `;
 
-    // Grid lines: 4 lines (2 vertical + 2 horizontal), each path length ~72px
-    // Cells: 3 colored marks placed in non-winning positions to suggest play
     const LINE_LEN = 86;
-    const LINE_DUR = 0.55; // seconds per line
+    const LINE_DUR = 0.55;
     const LINE_STAGGER = 0.18;
 
     return (
@@ -382,8 +379,6 @@ export function ViewGame({
                 xmlns="http://www.w3.org/2000/svg"
                 aria-hidden="true"
               >
-                {/* Outer grid lines — draw in sequentially */}
-                {/* vertical left  x=32 */}
                 <line
                   x1={32} y1={4} x2={32} y2={92}
                   stroke="var(--border-hi)"
@@ -396,7 +391,6 @@ export function ViewGame({
                     animationDelay: `${LINE_STAGGER * 0}s`,
                   }}
                 />
-                {/* vertical right x=64 */}
                 <line
                   x1={64} y1={4} x2={64} y2={92}
                   stroke="var(--border-hi)"
@@ -409,7 +403,6 @@ export function ViewGame({
                     animationDelay: `${LINE_STAGGER * 1}s`,
                   }}
                 />
-                {/* horizontal top y=32 */}
                 <line
                   x1={4} y1={32} x2={92} y2={32}
                   stroke="var(--border-hi)"
@@ -422,7 +415,6 @@ export function ViewGame({
                     animationDelay: `${LINE_STAGGER * 2}s`,
                   }}
                 />
-                {/* horizontal bottom y=64 */}
                 <line
                   x1={4} y1={64} x2={92} y2={64}
                   stroke="var(--border-hi)"
@@ -436,8 +428,6 @@ export function ViewGame({
                   }}
                 />
 
-                {/* Cell marks — appear after lines finish drawing */}
-                {/* Blue X  — top-left cell (center ~16,16) */}
                 <g
                   style={{
                     opacity: 0,
@@ -450,7 +440,6 @@ export function ViewGame({
                   <line x1={23} y1={9} x2={9} y2={23} stroke="var(--blue)" strokeWidth={2.2} strokeLinecap="round" />
                 </g>
 
-                {/* Red O — center cell (center ~48,48) */}
                 <circle
                   cx={48}
                   cy={48}
@@ -466,7 +455,6 @@ export function ViewGame({
                   }}
                 />
 
-                {/* Blue X — bottom-right cell (center ~80,80) */}
                 <g
                   style={{
                     opacity: 0,
@@ -481,13 +469,13 @@ export function ViewGame({
               </svg>
             </div>
 
-            <div className="t-h2" style={{ marginBottom: 8 }}>No hay partida activa</div>
+            <div className="t-h2" style={{ marginBottom: 8 }}>No Active Game</div>
             <div className="t-cap" style={{ marginBottom: 24 }}>
-              Crea una nueva partida o únete a una existente para empezar a jugar.
+              Create a new game or join an existing room to start playing.
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-              <button className="btn primary" onClick={() => navigate('create')}>Crear partida</button>
-              <button className="btn ghost" onClick={() => navigate('join')}>Unirse</button>
+              <button className="btn primary" onClick={() => navigate('create')}>Create Game</button>
+              <button className="btn ghost" onClick={() => navigate('join')}>Join Game</button>
             </div>
           </div>
         </div>
@@ -517,12 +505,12 @@ export function ViewGame({
           <div className="row" style={{ marginBottom: 10 }}>
             <span className="chip blue">
               <Icon name={mode === 'ai' || mode === 'custom_agent' ? 'cpu' : mode === 'online' ? 'globe' : 'bolt'} size={11}/>
-              {mode === 'ai' ? 'vs IA · Flattie' : mode === 'custom_agent' ? 'vs ' + playerO : mode === 'online' ? 'Online' : 'Local'}
+              {mode === 'ai' ? 'vs AI · Flattie' : mode === 'custom_agent' ? 'vs ' + playerO : mode === 'online' ? 'Online' : 'Local'}
             </span>
             <div className="spacer" />
-            <span className="t-cap t-mono">{mode === 'online' ? 'ONLINE' : mode === 'ai' || mode === 'custom_agent' ? 'IA' : 'LOCAL'}</span>
+            <span className="t-cap t-mono">{mode === 'online' ? 'ONLINE' : mode === 'ai' || mode === 'custom_agent' ? 'AI' : 'LOCAL'}</span>
           </div>
-          <div className="t-tag" style={{ marginBottom: 4 }}>Modo</div>
+          <div className="t-tag" style={{ marginBottom: 4 }}>Mode</div>
           <div style={{ fontSize: 14, fontWeight: 600 }}>
             {mode === 'ai' ? playerX + ' vs Flattie' : mode === 'custom_agent' ? playerX + ' vs ' + playerO : mode === 'online' ? 'Online · Ranked' : playerX + ' vs ' + playerO}
           </div>
@@ -544,7 +532,7 @@ export function ViewGame({
         <div className="card" style={{ padding: 12 }}>
           <div className="row" style={{ marginBottom: 8 }}>
             <Icon name="wifi" size={14} style={{ color: 'var(--green)' }} />
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Modo local</span>
+            <span style={{ fontSize: 12, fontWeight: 600 }}>Local mode</span>
             <div className="spacer" />
             <span className="t-cap t-mono">0 ms</span>
           </div>
@@ -557,20 +545,20 @@ export function ViewGame({
             ))}
           </div>
           <div className="row" style={{ marginTop: 6 }}>
-            <span className="t-cap">Sin latencia</span><div className="spacer"/>
-            <span className="t-cap t-mono">partida local</span>
+            <span className="t-cap">Zero latency</span><div className="spacer"/>
+            <span className="t-cap t-mono">local match</span>
           </div>
         </div>
 
         {/* Meta overview */}
         <div className="card" style={{ padding: 14 }}>
-          <div className="t-tag" style={{ marginBottom: 10 }}>Vista general</div>
+          <div className="t-tag" style={{ marginBottom: 10 }}>Overview</div>
           <div className="row" style={{ alignItems: 'flex-start', gap: 12 }}>
             <MetaBoard game={game} size={96} blueColor={blueColor} redColor={redColor} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
               <CaptureRow label="X" count={game.sb.filter((s) => s.winner === 'X').length} color={blueColor} />
               <CaptureRow label="O" count={game.sb.filter((s) => s.winner === 'O').length} color={redColor} />
-              <CaptureRow label="Libres" count={game.sb.filter((s) => !s.winner).length} color="var(--text-3)" />
+              <CaptureRow label="Open" count={game.sb.filter((s) => !s.winner).length} color="var(--text-3)" />
             </div>
           </div>
         </div>
@@ -589,22 +577,22 @@ export function ViewGame({
                 background: game.turn === 'X' ? blueColor : redColor,
                 boxShadow: `0 0 8px ${game.turn === 'X' ? blueColor : redColor}`,
               }}/>
-              {game.turn === 'X' ? `Turno de ${playerX}` : `Turno de ${playerO}`}
+              {game.turn === 'X' ? `${playerX}'s Turn` : `${playerO}'s Turn`}
               {isThinking && (
                 <span className="t-cap" style={{ color: 'var(--text-3)', marginLeft: 8 }}>
-                  Pensando...
+                  Thinking...
                 </span>
               )}
             </div>
             <div className="t-cap" style={{ marginTop: 2 }}>
               {game.activeSb !== null
-                ? `Debes jugar en el subtablero ${['↖','↑','↗','←','●','→','↙','↓','↘'][game.activeSb]}`
-                : 'Puedes jugar en cualquier subtablero libre'}
+                ? `You must play in sub-board ${['↖','↑','↗','←','●','→','↙','↓','↘'][game.activeSb]}`
+                : 'You may play in any open sub-board'}
             </div>
           </div>
           <div className="spacer" />
           <button className="btn ghost sm" onClick={() => openModal?.('settings')}><Icon name="settings" size={14}/></button>
-          <button className="btn danger sm" onClick={() => openModal?.('flag')}><Icon name="flag" size={13}/> Abandonar</button>
+          <button className="btn danger sm" onClick={() => openModal?.('flag')}><Icon name="flag" size={13}/> Resign</button>
         </div>
 
         {/* Board */}
@@ -638,7 +626,7 @@ export function ViewGame({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
         {/* Tabs */}
         <div className="card" style={{ padding: 4, display: 'flex', gap: 2 }}>
-          {(['Eventos', 'Movimientos'] as const).map((t) => (
+          {(['Events', 'Moves'] as const).map((t) => (
             <div key={t} onClick={() => setActiveTab(t)} style={{
               flex: 1, padding: '7px 0', textAlign: 'center',
               fontSize: 12, fontWeight: 600,
@@ -652,12 +640,12 @@ export function ViewGame({
 
         {/* Tab content */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          {activeTab === 'Movimientos' && (
+          {activeTab === 'Moves' && (
             <>
               <div className="row" style={{ padding: '10px 14px 8px', borderBottom: '1px solid var(--border)' }}>
-                <div className="t-tag">Movimientos · {game.history.length}</div>
+                <div className="t-tag">Moves · {game.history.length}</div>
                 <div className="spacer" />
-                <span className="chip">turno {game.history.length}</span>
+                <span className="chip">turn {game.history.length}</span>
               </div>
               <div style={{
                 flex: 1, overflow: 'auto', padding: '10px 14px',
@@ -680,7 +668,7 @@ export function ViewGame({
             </>
           )}
 
-          {activeTab === 'Eventos' && (
+          {activeTab === 'Events' && (
             <div ref={chatRef} style={{
               flex: 1, overflow: 'auto', padding: 14,
               display: 'flex', flexDirection: 'column', gap: 8,
@@ -688,7 +676,7 @@ export function ViewGame({
             }}>
               {chatEvents.filter((e) => e.kind === 'sys' || e.kind === 'event').length === 0 ? (
                 <div className="t-cap" style={{ textAlign: 'center', padding: '4px 0' }}>
-                  Partida iniciada · Modo local
+                  Game started · Local mode
                 </div>
               ) : (
                 chatEvents

@@ -12,33 +12,30 @@ interface ViewHistoryProps {
   onSelectReplay?: (match: RemoteMatch) => void;
 }
 
-// ─── Display helpers ──────────────────────────────────────────────────────────
-
-type LocalResult = 'victoria' | 'derrota' | 'empate';
+type LocalResult = 'win' | 'loss' | 'draw';
 
 function toLocalResult(result: MatchResult, userId: string, match: RemoteMatch): LocalResult {
-  if (result === 'draw' || result === 'abandoned') return 'empate';
+  if (result === 'draw' || result === 'abandoned') return 'draw';
   const userIsX = match.playerXId === userId;
-  if (result === 'x_wins') return userIsX ? 'victoria' : 'derrota';
-  // o_wins
-  return userIsX ? 'derrota' : 'victoria';
+  if (result === 'x_wins') return userIsX ? 'win' : 'loss';
+  return userIsX ? 'loss' : 'win';
 }
 
 const RESULT_CHIP: Record<LocalResult, string> = {
-  victoria: 'chip green',
-  derrota:  'chip red',
-  empate:   'chip',
+  win:  'chip green',
+  loss: 'chip red',
+  draw: 'chip',
 };
 
 const RESULT_LABEL: Record<LocalResult, string> = {
-  victoria: 'Victoria',
-  derrota:  'Derrota',
-  empate:   'Empate',
+  win:  'Victory',
+  loss: 'Defeat',
+  draw: 'Draw',
 };
 
 const MODE_LABEL: Record<MatchMode, string> = {
   online: 'Online',
-  ai:     'vs IA',
+  ai:     'vs AI',
   local:  'Local',
 };
 
@@ -53,17 +50,15 @@ function formatDateGroup(iso: string): string {
   const today = new Date();
   const diff  = today.setHours(0, 0, 0, 0) - date.setHours(0, 0, 0, 0);
   const days  = Math.floor(diff / 86_400_000);
-  if (days === 0) return 'hoy';
-  if (days === 1) return 'ayer';
-  if (days < 7)  return 'esta semana';
-  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  if (days === 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 7)  return 'this week';
+  return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 }
-
-// ─── Row component ────────────────────────────────────────────────────────────
 
 interface MatchRowProps {
   match: RemoteMatch;
@@ -90,43 +85,35 @@ function MatchRow({ match, userId, onReplay }: MatchRowProps): React.ReactElemen
       borderBottom: '1px solid var(--border)',
       fontSize: 13,
     }}>
-      {/* Result stripe */}
       <div style={{
         width: 4, height: 28, marginLeft: 14,
         background:
-          localResult === 'victoria' ? 'var(--green)' :
-          localResult === 'derrota'  ? 'var(--red)'   : 'var(--text-3)',
+          localResult === 'win'  ? 'var(--green)' :
+          localResult === 'loss' ? 'var(--red)'   : 'var(--text-3)',
         borderRadius: 2,
       }} />
 
-      {/* Avatar */}
       <Avatar
         name={opponentName}
         size={26}
         gradient={isAI ? 'linear-gradient(140deg,#52525B,#27272A)' : undefined}
       />
 
-      {/* Opponent + date */}
       <div>
         <div style={{ fontWeight: 600 }}>vs {opponentName}</div>
         <div className="t-cap t-mono">{formatDate(match.endedAt)}</div>
       </div>
 
-      {/* Result chip */}
       <span className={RESULT_CHIP[localResult]}>
         {RESULT_LABEL[localResult]}
       </span>
 
-      {/* Mode */}
       <div className="t-cap t-mono">{MODE_LABEL[match.mode]}</div>
 
-      {/* Moves */}
-      <div className="t-cap t-mono">{match.totalMoves} mov.</div>
+      <div className="t-cap t-mono">{match.totalMoves} moves</div>
 
-      {/* Duration */}
       <div className="t-cap t-mono">{formatDuration(match.durationSeconds)}</div>
 
-      {/* Actions */}
       <div className="row" style={{ gap: 4, justifyContent: 'flex-end' }}>
         {!isAI && (
           <div className="t-mono" style={{ fontSize: 12, color: eloColor, fontWeight: 600, marginRight: 6 }}>
@@ -141,14 +128,11 @@ function MatchRow({ match, userId, onReplay }: MatchRowProps): React.ReactElemen
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
 export function ViewHistory({ navigate, blueColor: _blueColor, redColor: _redColor, onSelectReplay }: ViewHistoryProps): React.ReactElement {
   const { matches, loading, error } = useMatchHistory();
   const session = useUserStore((s) => s.session);
   const userId  = session?.userId ?? '';
 
-  // Group consecutive rows by date label
   const grouped: Array<{ label: string; match: RemoteMatch }> = matches.map((m) => ({
     label: formatDateGroup(m.endedAt),
     match: m,
@@ -156,50 +140,44 @@ export function ViewHistory({ navigate, blueColor: _blueColor, redColor: _redCol
 
   return (
     <div className="fade-in" style={{ padding: 28, overflow: 'auto', height: '100%' }}>
-
-      {/* Header */}
       <div className="row" style={{ marginBottom: 16 }}>
         <div style={{ marginBottom: 24 }}>
           <button className="btn ghost sm" onClick={() => navigate('home')}>
-            <Icon name="arrow-l" size={14} /> Inicio
+            <Icon name="arrow-l" size={14} /> Home
           </button>
-          <div className="t-h1" style={{ marginTop: 12 }}>Historial</div>
+          <div className="t-h1" style={{ marginTop: 12 }}>History</div>
           <div className="muted" style={{ fontSize: 13 }}>
             {loading
-              ? 'Cargando partidas…'
-              : `${matches.length} partida${matches.length !== 1 ? 's' : ''} · filtra por modo, resultado u oponente`}
+              ? 'Loading matches…'
+              : `${matches.length} match${matches.length !== 1 ? 'es' : ''} · filter by mode, outcome or opponent`}
           </div>
         </div>
         <div className="spacer" />
-        <button className="btn" disabled title="Próximamente" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-          <Icon name="database" size={14} /> Exportar PGN
+        <button className="btn" disabled title="Coming soon" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+          <Icon name="database" size={14} /> Export PGN
         </button>
       </div>
 
-      {/* Loading state */}
       {loading && (
         <div className="t-cap" style={{ textAlign: 'center', padding: 48 }}>
-          Cargando historial…
+          Loading history…
         </div>
       )}
 
-      {/* Error state */}
       {error && !loading && (
         <div className="t-cap" style={{ textAlign: 'center', padding: 48, color: 'var(--red)' }}>
-          Error al cargar historial: {error}
+          Error loading history: {error}
         </div>
       )}
 
-      {/* Empty state */}
       {!loading && !error && matches.length === 0 && (
         <div style={{ textAlign: 'center', color: 'var(--text-3)', padding: '64px 0', fontSize: 13 }}>
           <Icon name="history" size={32} style={{ marginBottom: 12, opacity: 0.3 }} />
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Sin partidas guardadas</div>
-          <div>Juega tu primera partida para verla aquí.</div>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>No saved matches</div>
+          <div>Play your first match to see it recorded here.</div>
         </div>
       )}
 
-      {/* Match list */}
       {!loading && !error && matches.length > 0 && (
         <div className="card" style={{ overflow: 'hidden' }}>
           {grouped.map((item, i) => {

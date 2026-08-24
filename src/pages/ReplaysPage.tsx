@@ -12,26 +12,26 @@ interface ViewReplaysProps {
   onSelectReplay: (match: RemoteMatch) => void;
 }
 
-type LocalResult = 'victoria' | 'derrota' | 'empate';
+type LocalResult = 'win' | 'loss' | 'draw';
 
 const RESULT_CHIP: Record<LocalResult, string> = {
-  victoria: 'chip green',
-  derrota:  'chip red',
-  empate:   'chip',
+  win:  'chip green',
+  loss: 'chip red',
+  draw: 'chip',
 };
 
 const RESULT_LABEL: Record<LocalResult, string> = {
-  victoria: 'Victoria',
-  derrota:  'Derrota',
-  empate:   'Empate',
+  win:  'Victory',
+  loss: 'Defeat',
+  draw: 'Draw',
 };
 
 function toLocalResult(result: MatchResult, userId: string, match: RemoteMatch): LocalResult {
-  if (result === 'draw') return 'empate';
+  if (result === 'draw') return 'draw';
   const userIsX = match.playerXId === userId;
-  if (result === 'x_wins') return userIsX ? 'victoria' : 'derrota';
-  if (result === 'o_wins') return userIsX ? 'derrota' : 'victoria';
-  return 'empate'; // abandoned treated as neutral
+  if (result === 'x_wins') return userIsX ? 'win' : 'loss';
+  if (result === 'o_wins') return userIsX ? 'loss' : 'win';
+  return 'draw';
 }
 
 function formatDuration(seconds: number): string {
@@ -41,7 +41,7 @@ function formatDuration(seconds: number): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 interface ReplayCardProps {
@@ -88,16 +88,16 @@ function ReplayCard({ match, userId, onView }: ReplayCardProps): React.ReactElem
       {/* Meta */}
       <div className="row" style={{ gap: 14, color: 'var(--text-3)' }}>
         <span className="t-cap t-mono"><Icon name="clock" size={11}/> {formatDuration(match.durationSeconds)}</span>
-        <span className="t-cap t-mono">{match.totalMoves} mov.</span>
+        <span className="t-cap t-mono">{match.totalMoves} moves</span>
         <span className="t-cap">{formatDate(match.endedAt)}</span>
       </div>
 
       {/* Actions */}
       <div className="row" style={{ gap: 6, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
         <button className="btn primary sm" style={{ flex: 1 }} onClick={() => onView(match)}>
-          <Icon name="play" size={13}/> Ver replay
+          <Icon name="play" size={13}/> View Replay
         </button>
-        <button className="btn ghost sm"><Icon name="copy" size={13}/> Renombrar</button>
+        <button className="btn ghost sm"><Icon name="copy" size={13}/> Rename</button>
         <button className="btn ghost sm" style={{ color: 'var(--red)' }}><Icon name="x" size={13}/></button>
       </div>
     </div>
@@ -115,26 +115,26 @@ export function ViewReplays({ navigate, blueColor: _blueColor, redColor: _redCol
       <div className="row" style={{ marginBottom: 20, alignItems: 'flex-start' }}>
         <div>
           <button className="btn ghost sm" onClick={() => navigate('home')} style={{ marginBottom: 10 }}>
-            <Icon name="arrow-l" size={14}/> Inicio
+            <Icon name="arrow-l" size={14}/> Home
           </button>
-          <div className="t-h1" style={{ marginBottom: 6 }}>Replays guardados</div>
+          <div className="t-h1" style={{ marginBottom: 6 }}>Saved Replays</div>
           <div className="row" style={{ gap: 8 }}>
-            <span className="chip"><Icon name="history" size={11}/> {replays.length} guardados</span>
+            <span className="chip"><Icon name="history" size={11}/> {replays.length} saved</span>
           </div>
         </div>
         <div className="spacer"/>
         <button className="btn ghost" style={{ alignSelf: 'flex-end', marginBottom: 2 }}>
-          <Icon name="database" size={14}/> Importar PGN
+          <Icon name="database" size={14}/> Import PGN
         </button>
       </div>
 
       {/* Loading / error states */}
       {loading && (
-        <div className="t-cap" style={{ textAlign: 'center', padding: 32 }}>Cargando…</div>
+        <div className="t-cap" style={{ textAlign: 'center', padding: 32 }}>Loading…</div>
       )}
       {error && !loading && (
         <div className="t-cap" style={{ textAlign: 'center', padding: 32, color: 'var(--red)' }}>
-          Error al cargar replays: {error}
+          Error loading replays: {error}
         </div>
       )}
 
@@ -143,7 +143,7 @@ export function ViewReplays({ navigate, blueColor: _blueColor, redColor: _redCol
         <>
           {replays.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--text-3)', padding: '32px 0', fontSize: 13 }}>
-              Sin replays guardados todavía
+              No saved replays yet
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
@@ -160,7 +160,7 @@ export function ViewReplays({ navigate, blueColor: _blueColor, redColor: _redCol
 
           {replays.length > 0 && (
             <div style={{ textAlign: 'center', color: 'var(--text-3)', padding: '24px 0', fontSize: 12 }}>
-              Sin más replays guardados
+              No more saved replays
             </div>
           )}
         </>

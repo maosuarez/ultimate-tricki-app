@@ -1,0 +1,45 @@
+schema: spec-driven
+
+# Project context
+# Injected into AI context when planning and creating artifacts.
+context: |
+  Project: Tricki Avanzado (Ultimate Tic Tac Toe desktop application)
+  Tech Stack:
+    - Frontend: React 19, TypeScript 5.8, Vite 7, Zustand 5, Tailwind CSS
+    - Native Core: Tauri v2, Rust (tokio, serde)
+    - Cloud Backend: Supabase (Auth, PostgreSQL, Realtime, RLS)
+    - Multiplayer: Azure WebPubSub / WebSocket Transport
+    - Package Manager: pnpm (strict requirement)
+  
+  Architectural Invariants:
+    - Single Source of Truth (SSOT): openspec/specs/
+    - Unidirectional Data Flow: UI -> Hook -> Store -> Service -> IPC/Cloud -> Rust/Supabase
+    - Domain Separation: Game components (src/components/game/) are pure visual representations.
+    - Pure Services: Business algorithms and rule validation reside in pure TypeScript modules (src/utils/, src/services/) and Rust.
+    - Strict Type Safety: No 'any'. Use narrowing and discriminated unions.
+    - Error Handling: Centralized AppError in Rust and SupabaseError in TypeScript.
+
+# Per-artifact rules
+rules:
+  proposal:
+    - Keep proposals concise and focused on high-impact changes
+    - Always include Non-goals and clear Acceptance Criteria
+  specs:
+    - Use strict GIVEN-WHEN-THEN scenarios for each requirement
+    - Align with canonical domain terminology (macroboard, subboard, cell, activeSb)
+  design:
+    - Detail changes to stores, services, and IPC contracts
+    - Explicitly state impact on data persistence and UI performance
+  tasks:
+    - Break tasks into small, testable increments (<= 2 hours)
+    - Include automated tests in the implementation plan
+
+# Per-operation guidance
+operations:
+  apply:
+    guidance:
+      - Always run TypeScript check (pnpm tsc --noEmit) after modifications
+      - Maintain existing code docstrings and type safety
+  archive:
+    guidance:
+      - Sincronizar siempre los delta specs con los main specs antes de archivar

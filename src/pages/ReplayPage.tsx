@@ -13,8 +13,6 @@ interface ViewReplayProps {
   matchMeta: RemoteMatch | null;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 const SUB_BOARD_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'] as const;
 
 function moveLabel(move: MoveHistory): string {
@@ -28,14 +26,12 @@ function formatDuration(seconds: number): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-ES', {
+  return new Date(iso).toLocaleDateString('en-US', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
   });
 }
-
-// ─── Speed selector ───────────────────────────────────────────────────────────
 
 interface SpeedOption {
   label: string;
@@ -47,8 +43,6 @@ const SPEED_OPTIONS: SpeedOption[] = [
   { label: '1×',   ms: 800  },
   { label: '2×',   ms: 400  },
 ];
-
-// ─── Move list ────────────────────────────────────────────────────────────────
 
 interface MovePair {
   n: number;
@@ -80,8 +74,6 @@ function buildMovePairs(moves: MoveHistory[]): MovePair[] {
   return pairs;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export function ViewReplay({
   navigate,
   blueColor,
@@ -110,7 +102,6 @@ export function ViewReplay({
   const moveListRef = React.useRef<HTMLDivElement>(null);
   const activeMoveRef = React.useRef<HTMLDivElement>(null);
 
-  // Scroll active move into view
   React.useEffect(() => {
     activeMoveRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [currentMoveIndex]);
@@ -118,16 +109,14 @@ export function ViewReplay({
   const currentMove = currentMoveIndex >= 0 ? moves[currentMoveIndex] : null;
   const movePairs   = buildMovePairs(moves);
 
-  // ── Loading / error states ────────────────────────────────────────────────
-
   if (!matchId || !matchMeta) {
     return (
       <div className="fade-in" style={{ padding: 28, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
         <div className="t-cap" style={{ color: 'var(--text-3)' }}>
-          Selecciona una partida desde la lista de replays para verla aquí.
+          Select a match from the replays list to view it here.
         </div>
         <button className="btn ghost sm" onClick={() => navigate('replays')}>
-          <Icon name="arrow-l" size={13} /> Ver replays
+          <Icon name="arrow-l" size={13} /> View Replays
         </button>
       </div>
     );
@@ -136,7 +125,7 @@ export function ViewReplay({
   if (isLoading) {
     return (
       <div className="fade-in" style={{ padding: 28, height: '100%', display: 'grid', placeItems: 'center' }}>
-        <div className="t-cap">Cargando replay…</div>
+        <div className="t-cap">Loading replay…</div>
       </div>
     );
   }
@@ -144,9 +133,9 @@ export function ViewReplay({
   if (error) {
     return (
       <div className="fade-in" style={{ padding: 28, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-        <div className="t-cap" style={{ color: 'var(--red)' }}>Error al cargar replay: {error}</div>
+        <div className="t-cap" style={{ color: 'var(--red)' }}>Error loading replay: {error}</div>
         <button className="btn ghost sm" onClick={() => navigate('replays')}>
-          <Icon name="arrow-l" size={13} /> Volver
+          <Icon name="arrow-l" size={13} /> Back
         </button>
       </div>
     );
@@ -154,12 +143,10 @@ export function ViewReplay({
 
   if (!currentBoardState) return <></>;
 
-  // ── Derived display values ────────────────────────────────────────────────
-
-  const totalMoves   = moves.length;
-  const sliderValue  = currentMoveIndex + 1; // 0 = before first move, 1..N = move applied
-  const title        = `${matchMeta.playerXName} vs ${matchMeta.playerOName}`;
-  const dateLabel    = formatDate(matchMeta.endedAt);
+  const totalMoves    = moves.length;
+  const sliderValue   = currentMoveIndex + 1;
+  const title         = `${matchMeta.playerXName} vs ${matchMeta.playerOName}`;
+  const dateLabel     = formatDate(matchMeta.endedAt);
   const durationLabel = formatDuration(matchMeta.durationSeconds);
 
   return (
@@ -185,16 +172,16 @@ export function ViewReplay({
 
         {/* Current move metadata */}
         <div className="card" style={{ padding: 14 }}>
-          <div className="t-tag" style={{ marginBottom: 10 }}>Movimiento actual</div>
+          <div className="t-tag" style={{ marginBottom: 10 }}>Current Move</div>
           {currentMove ? (
             <>
               <div className="row" style={{ marginBottom: 8, gap: 8, fontSize: 12 }}>
-                <span className="muted">Turno</span>
+                <span className="muted">Turn</span>
                 <div className="spacer" />
                 <b>{currentMove.n}</b>
               </div>
               <div className="row" style={{ marginBottom: 8, gap: 8, fontSize: 12 }}>
-                <span className="muted">Jugador</span>
+                <span className="muted">Player</span>
                 <div className="spacer" />
                 <span
                   className="chip"
@@ -204,7 +191,7 @@ export function ViewReplay({
                 </span>
               </div>
               <div className="row" style={{ gap: 8, fontSize: 12 }}>
-                <span className="muted">Posición</span>
+                <span className="muted">Position</span>
                 <div className="spacer" />
                 <code
                   style={{
@@ -221,7 +208,7 @@ export function ViewReplay({
             </>
           ) : (
             <div className="t-cap" style={{ color: 'var(--text-3)' }}>
-              Tablero en estado inicial
+              Initial board state
             </div>
           )}
         </div>
@@ -257,7 +244,7 @@ export function ViewReplay({
             {/* Go to start */}
             <button
               className="btn icon"
-              title="Inicio"
+              title="Start"
               onClick={goToStart}
               disabled={currentMoveIndex === -1}
             >
@@ -267,7 +254,7 @@ export function ViewReplay({
             {/* Previous move */}
             <button
               className="btn icon"
-              title="Movimiento anterior"
+              title="Previous move"
               onClick={() => { pause(); goToPrevious(); }}
               disabled={currentMoveIndex === -1}
             >
@@ -276,13 +263,13 @@ export function ViewReplay({
 
             {/* Play / Pause */}
             {isPlaying ? (
-              <button className="btn icon primary" title="Pausar" onClick={pause}>
+              <button className="btn icon primary" title="Pause" onClick={pause}>
                 <Icon name="pause" size={14} />
               </button>
             ) : (
               <button
                 className="btn icon primary"
-                title="Reproducir"
+                title="Play"
                 onClick={play}
                 disabled={currentMoveIndex >= totalMoves - 1}
               >
@@ -293,7 +280,7 @@ export function ViewReplay({
             {/* Next move */}
             <button
               className="btn icon"
-              title="Siguiente movimiento"
+              title="Next move"
               onClick={() => { pause(); goToNext(); }}
               disabled={currentMoveIndex >= totalMoves - 1}
             >
@@ -303,7 +290,7 @@ export function ViewReplay({
             {/* Go to end */}
             <button
               className="btn icon"
-              title="Final"
+              title="End"
               onClick={goToEnd}
               disabled={currentMoveIndex >= totalMoves - 1}
             >
@@ -317,7 +304,7 @@ export function ViewReplay({
               className="t-mono"
               style={{ fontSize: 12, color: 'var(--text-2)', userSelect: 'none' }}
             >
-              Mov. <b style={{ color: 'var(--text)' }}>{Math.max(0, sliderValue)}</b> / {totalMoves}
+              Move <b style={{ color: 'var(--text)' }}>{Math.max(0, sliderValue)}</b> / {totalMoves}
             </span>
 
             <div className="spacer" />
@@ -347,7 +334,6 @@ export function ViewReplay({
             value={sliderValue}
             onChange={(e) => {
               pause();
-              // slider value 0 = empty board (-1 index), 1 = first move (index 0), etc.
               goToMove(Number(e.target.value) - 1);
             }}
             style={{ width: '100%', accentColor: blueColor }}
@@ -360,7 +346,7 @@ export function ViewReplay({
         className="card"
         style={{ padding: 14, display: 'flex', flexDirection: 'column', minHeight: 0 }}
       >
-        <div className="t-tag" style={{ marginBottom: 10 }}>Movimientos</div>
+        <div className="t-tag" style={{ marginBottom: 10 }}>Moves</div>
         <div
           ref={moveListRef}
           style={{
@@ -374,7 +360,6 @@ export function ViewReplay({
           }}
         >
           {movePairs.map((pair, pairIdx) => {
-            // Compute move indices for X and O moves in this pair
             const xMoveIdx = pair.xMove ? moves.findIndex((m) => m === pair.xMove) : -1;
             const oMoveIdx = pair.oMove ? moves.findIndex((m) => m === pair.oMove) : -1;
             const xActive  = xMoveIdx === currentMoveIndex;
@@ -382,12 +367,10 @@ export function ViewReplay({
 
             return (
               <React.Fragment key={pairIdx}>
-                {/* Pair number */}
                 <div style={{ color: 'var(--text-3)', padding: '4px 8px 4px 0' }}>
                   {pair.n}.
                 </div>
 
-                {/* X move cell */}
                 <div
                   ref={xActive ? activeMoveRef : undefined}
                   style={{
@@ -404,7 +387,6 @@ export function ViewReplay({
                   {pair.xMove ? moveLabel(pair.xMove) : '—'}
                 </div>
 
-                {/* O move cell */}
                 <div
                   ref={oActive ? activeMoveRef : undefined}
                   style={{

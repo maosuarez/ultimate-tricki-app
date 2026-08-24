@@ -14,9 +14,9 @@ interface ViewLoginProps {
 type LoginTab = 'login' | 'register' | 'guest';
 
 const TAB_LABELS: Record<LoginTab, string> = {
-  login: 'Iniciar sesion',
-  register: 'Crear cuenta',
-  guest: 'Invitado',
+  login: 'Sign In',
+  register: 'Create Account',
+  guest: 'Guest',
 };
 
 function calcPasswordStrength(pw: string): number {
@@ -32,26 +32,22 @@ function calcPasswordStrength(pw: string): number {
 export function ViewLogin({ navigate: _navigate, blueColor: _blueColor, onSignIn, onSignUp, onGuest }: ViewLoginProps): React.ReactElement {
   const [tab, setTab] = React.useState<LoginTab>('login');
 
-  // Shared form state
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [username, setUsername] = React.useState('');
-  const [guestName, setGuestName] = React.useState('Invitado_7H2K');
+  const [guestName, setGuestName] = React.useState('Guest_7H2K');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [rememberMe, setRememberMe] = React.useState(true);
 
-  // Username availability
   const [usernameAvailable, setUsernameAvailable] = React.useState<boolean | null>(null);
   const [checkingUsername, setCheckingUsername] = React.useState(false);
 
-  // Reset error when switching tabs
   const handleTabChange = (k: LoginTab) => {
     setTab(k);
     setErrorMsg(null);
   };
 
-  // Debounced username availability check
   React.useEffect(() => {
     if (tab !== 'register' || username.length < 3) {
       setUsernameAvailable(null);
@@ -77,10 +73,10 @@ export function ViewLogin({ navigate: _navigate, blueColor: _blueColor, onSignIn
     setIsSubmitting(true);
 
     if (!email.includes('@') || !email.includes('.')) {
-      setErrorMsg('Email inválido'); setIsSubmitting(false); return;
+      setErrorMsg('Invalid email address'); setIsSubmitting(false); return;
     }
     if (password.length < 6) {
-      setErrorMsg('La contraseña debe tener al menos 6 caracteres'); setIsSubmitting(false); return;
+      setErrorMsg('Password must be at least 6 characters'); setIsSubmitting(false); return;
     }
 
     try {
@@ -101,16 +97,16 @@ export function ViewLogin({ navigate: _navigate, blueColor: _blueColor, onSignIn
     setIsSubmitting(true);
 
     if (!email.includes('@') || !email.includes('.')) {
-      setErrorMsg('Email inválido'); setIsSubmitting(false); return;
+      setErrorMsg('Invalid email address'); setIsSubmitting(false); return;
     }
     if (username.length < 3 || username.length > 20) {
-      setErrorMsg('El usuario debe tener entre 3 y 20 caracteres'); setIsSubmitting(false); return;
+      setErrorMsg('Username must be between 3 and 20 characters'); setIsSubmitting(false); return;
     }
     if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(username)) {
-      setErrorMsg('El usuario solo puede contener letras, números y guiones bajos, y debe empezar con una letra'); setIsSubmitting(false); return;
+      setErrorMsg('Username can only contain letters, numbers, and underscores, and must start with a letter'); setIsSubmitting(false); return;
     }
     if (password.length < 8) {
-      setErrorMsg('La contraseña debe tener al menos 8 caracteres'); setIsSubmitting(false); return;
+      setErrorMsg('Password must be at least 8 characters'); setIsSubmitting(false); return;
     }
 
     try {
@@ -127,7 +123,7 @@ export function ViewLogin({ navigate: _navigate, blueColor: _blueColor, onSignIn
 
   const handleGuest = (e: React.FormEvent) => {
     e.preventDefault();
-    onGuest(guestName || 'Invitado_7H2K');
+    onGuest(guestName || 'Guest_7H2K');
   };
 
   const pwStrength = calcPasswordStrength(password);
@@ -158,7 +154,7 @@ export function ViewLogin({ navigate: _navigate, blueColor: _blueColor, onSignIn
           </div>
           <div>
             <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-.01em' }}>Ultimate</div>
-            <div className="t-cap">Tic Tac Toe — el meta-juego</div>
+            <div className="t-cap">Tic Tac Toe — the meta-game</div>
           </div>
         </div>
 
@@ -184,12 +180,12 @@ export function ViewLogin({ navigate: _navigate, blueColor: _blueColor, onSignIn
 
         {tab === 'guest' ? (
           <form onSubmit={handleGuest}>
-            <div className="t-tag" style={{ marginBottom: 8 }}>Modo invitado</div>
+            <div className="t-tag" style={{ marginBottom: 8 }}>Guest Mode</div>
             <div className="muted" style={{ fontSize: 13, marginBottom: 18 }}>
-              Juega sin cuenta. Tu progreso no se guardara y no podras jugar partidas ranked.
+              Play without an account. Your progress will not be saved and you cannot play ranked matches.
             </div>
             <div style={{ marginBottom: 16 }}>
-              <label className="t-cap" style={{ marginBottom: 4, display: 'block' }}>Nombre temporal</label>
+              <label className="t-cap" style={{ marginBottom: 4, display: 'block' }}>Temporary display name</label>
               <input
                 className="input"
                 value={guestName}
@@ -205,42 +201,42 @@ export function ViewLogin({ navigate: _navigate, blueColor: _blueColor, onSignIn
               style={{ width: '100%' }}
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Cargando...' : <>Continuar como invitado <Icon name="arrow-r" size={14}/></>}
+              {isSubmitting ? 'Loading...' : <>Continue as Guest <Icon name="arrow-r" size={14}/></>}
             </button>
           </form>
         ) : (
           <form onSubmit={tab === 'login' ? handleSignIn : handleSignUp}>
             <div style={{ marginBottom: 12 }}>
-              <label className="t-cap" style={{ marginBottom: 4, display: 'block' }}>Email o usuario</label>
+              <label className="t-cap" style={{ marginBottom: 4, display: 'block' }}>Email address</label>
               <input
                 className="input"
-                placeholder="lucas@example.com"
+                placeholder="player@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             {tab === 'register' && (
               <div style={{ marginBottom: 12 }}>
-                <label className="t-cap" style={{ marginBottom: 4, display: 'block' }}>Usuario</label>
+                <label className="t-cap" style={{ marginBottom: 4, display: 'block' }}>Username</label>
                 <input
                   className="input"
-                  placeholder="@lucas"
+                  placeholder="@player"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                 />
                 <div className="row" style={{ marginTop: 4, gap: 6 }}>
-                  {checkingUsername && <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Verificando...</span>}
+                  {checkingUsername && <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Checking...</span>}
                   {!checkingUsername && usernameAvailable === true && (
-                    <><Icon name="check" size={12} style={{ color: 'var(--green)' }}/><span style={{ fontSize: 11, color: 'var(--green)' }}>Usuario disponible</span></>
+                    <><Icon name="check" size={12} style={{ color: 'var(--green)' }}/><span style={{ fontSize: 11, color: 'var(--green)' }}>Username available</span></>
                   )}
                   {!checkingUsername && usernameAvailable === false && (
-                    <><Icon name="x" size={12} style={{ color: 'var(--red)' }}/><span style={{ fontSize: 11, color: 'var(--red)' }}>Usuario no disponible</span></>
+                    <><Icon name="x" size={12} style={{ color: 'var(--red)' }}/><span style={{ fontSize: 11, color: 'var(--red)' }}>Username taken</span></>
                   )}
                 </div>
               </div>
             )}
             <div style={{ marginBottom: 16 }}>
-              <label className="t-cap" style={{ marginBottom: 4, display: 'block' }}>Contrasena</label>
+              <label className="t-cap" style={{ marginBottom: 4, display: 'block' }}>Password</label>
               <input
                 className="input"
                 type="password"
@@ -268,10 +264,10 @@ export function ViewLogin({ navigate: _navigate, blueColor: _blueColor, onSignIn
                     className={`switch${rememberMe ? ' on' : ''}`}
                     onClick={() => setRememberMe(r => !r)}
                     style={{ cursor: 'pointer' }}
-                  />Recordarme
+                  />Remember me
                 </label>
                 <div className="spacer" />
-                <span style={{ fontSize: 12, color: 'var(--text-3)' }} title="Recuperación de contraseña próximamente">Olvidaste?</span>
+                <span style={{ fontSize: 12, color: 'var(--text-3)' }} title="Password recovery coming soon">Forgot?</span>
               </div>
             )}
             {errorMsg && (
@@ -283,16 +279,16 @@ export function ViewLogin({ navigate: _navigate, blueColor: _blueColor, onSignIn
               style={{ width: '100%', marginBottom: 14 }}
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Cargando...' : <>{tab === 'login' ? 'Entrar' : 'Crear cuenta'} <Icon name="arrow-r" size={14}/></>}
+              {isSubmitting ? 'Loading...' : <>{tab === 'login' ? 'Sign In' : 'Create Account'} <Icon name="arrow-r" size={14}/></>}
             </button>
             <div className="row" style={{ marginBottom: 14, gap: 10 }}>
               <div style={{ flex: 1, height: 1, background: 'var(--border)' }}/>
-              <span className="t-cap">O continua con</span>
+              <span className="t-cap">Or continue with</span>
               <div style={{ flex: 1, height: 1, background: 'var(--border)' }}/>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <button type="button" className="btn" disabled title="Próximamente" style={{ opacity: 0.5, cursor: 'not-allowed' }}><Icon name="google" size={14}/> Google</button>
-              <button type="button" className="btn" disabled title="Próximamente" style={{ opacity: 0.5, cursor: 'not-allowed' }}><Icon name="github" size={14}/> GitHub</button>
+              <button type="button" className="btn" disabled title="Coming soon" style={{ opacity: 0.5, cursor: 'not-allowed' }}><Icon name="google" size={14}/> Google</button>
+              <button type="button" className="btn" disabled title="Coming soon" style={{ opacity: 0.5, cursor: 'not-allowed' }}><Icon name="github" size={14}/> GitHub</button>
             </div>
           </form>
         )}

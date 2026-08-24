@@ -34,50 +34,44 @@ function formatDuration(seconds: number): string {
 function formatRelative(isoDate: string): string {
   const diff = Date.now() - new Date(isoDate).getTime();
   const hours = Math.floor(diff / 3_600_000);
-  if (hours < 1) return 'hace <1h';
-  if (hours < 24) return `hace ${hours}h`;
+  if (hours < 1) return '<1h ago';
+  if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  if (days === 1) return 'ayer';
-  return `hace ${days}d`;
+  if (days === 1) return 'yesterday';
+  return `${days}d ago`;
 }
 
 export function ViewDashboard({ navigate, blueColor, redColor }: ViewDashboardProps): React.ReactElement {
-
-  // Datos del usuario actual
   const { profile, stats, globalRanking, recentMatches, isLoading } = useCurrentUser();
 
-  // Cálculos para display de estadísticas
-  const displayName = profile?.displayName ?? 'Jugador';
+  const displayName = profile?.displayName ?? 'Player';
   const elo = stats ? stats.wins + stats.losses + stats.draws > 0 ? profile?.rating ?? 0 : 0 : null;
   const eloDisplay = elo !== null ? elo.toLocaleString() : '—';
   const winsDisplay = stats ? String(stats.wins) : '—';
   const winrate = stats && stats.totalMatches > 0
     ? Math.round((stats.wins / stats.totalMatches) * 100)
     : null;
-  const winrateSub = winrate !== null ? `${winrate}% winrate` : 'sin partidas';
+  const winrateSub = winrate !== null ? `${winrate}% winrate` : 'no matches';
   const streakDisplay = stats ? String(stats.winStreak) : '—';
-  const streakSub = stats ? `${stats.winStreak} victorias seguidas` : '';
+  const streakSub = stats ? `${stats.winStreak} win streak` : '';
 
-  // Tiempo total calculado desde stats
   const totalPlayMs = stats ? stats.totalMoves * stats.averageMoveTimeMs : 0;
   const totalHours = Math.floor(totalPlayMs / 3_600_000);
   const totalTimeDisplay = stats
     ? totalHours > 0 ? `${totalHours}h` : `${Math.floor(totalPlayMs / 60_000)}m`
     : '—';
 
-  // Subtítulo del hero: última partida relativa
   const lastMatchText = stats?.lastMatchAt
-    ? `Última partida ${formatRelative(stats.lastMatchAt)}.`
-    : 'Aún no has jugado ninguna partida.';
+    ? `Last match ${formatRelative(stats.lastMatchAt)}.`
+    : "You haven't played any matches yet.";
 
-  // ELO sub: rating change de la última partida
   const lastMatch = recentMatches[0] ?? null;
   const lastRatingChange = lastMatch !== null
     ? (lastMatch.playerXId === profile?.id ? lastMatch.ratingChangeX : lastMatch.ratingChangeO)
     : null;
   const eloSub = lastRatingChange !== null
-    ? `${lastRatingChange >= 0 ? '+' : ''}${lastRatingChange} última partida`
-    : 'rating actual';
+    ? `${lastRatingChange >= 0 ? '+' : ''}${lastRatingChange} last match`
+    : 'current rating';
 
   return (
     <div className="fade-in" style={{ padding: 28, overflow: 'auto', height: '100%' }}>
@@ -95,28 +89,26 @@ export function ViewDashboard({ navigate, blueColor, redColor }: ViewDashboardPr
         alignItems: 'center', marginBottom: 22,
       }}>
         <div>
-          {/* Saludo y botones de acción */}
-          <div className="t-tag" style={{ marginBottom: 10 }}>Bienvenido de vuelta</div>
-          <div className="t-display" style={{ marginBottom: 6 }}>Hola, <span style={{ color: blueColor }}>{displayName}</span>.</div>
+          <div className="t-tag" style={{ marginBottom: 10 }}>Welcome back</div>
+          <div className="t-display" style={{ marginBottom: 6 }}>Hello, <span style={{ color: blueColor }}>{displayName}</span>.</div>
           <div className="muted" style={{ fontSize: 14, marginBottom: 18, maxWidth: 540 }}>
             {lastMatchText}
           </div>
           <div className="row" style={{ gap: 10 }}>
             <button className="btn primary lg" onClick={() => navigate('game')}>
-              <Icon name="play" size={16} /> Jugar ahora
+              <Icon name="play" size={16} /> Play Now
             </button>
             <button className="btn lg" onClick={() => navigate('create')}>
-              <Icon name="plus" size={16} /> Crear partida
+              <Icon name="plus" size={16} /> Create Game
             </button>
             <button className="btn lg ghost" onClick={() => navigate('join')}>
-              <Icon name="users" size={16} /> Unirse a sala
+              <Icon name="users" size={16} /> Join Room
             </button>
           </div>
         </div>
-        {/* Mini meta-board preview */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
           <MetaBoard game={buildSampleGame()} size={150} blueColor={blueColor} redColor={redColor} />
-          <div className="t-cap">Piensa. Marca. Gana.</div>
+          <div className="t-cap">Think. Place. Win.</div>
         </div>
       </div>
 
@@ -124,17 +116,17 @@ export function ViewDashboard({ navigate, blueColor, redColor }: ViewDashboardPr
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 22 }}>
         {isLoading ? (
           <>
-            <Stat label="ELO"          value="…" sub="cargando" accent="var(--text)" />
-            <Stat label="Victorias"    value="…" sub="cargando" accent="var(--green)" />
-            <Stat label="Racha"        value="…" sub="cargando" accent={blueColor} />
-            <Stat label="Tiempo total" value="…" sub="esta temporada" />
+            <Stat label="ELO"        value="…" sub="loading" accent="var(--text)" />
+            <Stat label="Wins"       value="…" sub="loading" accent="var(--green)" />
+            <Stat label="Streak"     value="…" sub="loading" accent={blueColor} />
+            <Stat label="Total Time" value="…" sub="this season" />
           </>
         ) : (
           <>
-            <Stat label="ELO"          value={eloDisplay}        sub={eloSub}         accent="var(--text)" />
-            <Stat label="Victorias"    value={winsDisplay}       sub={winrateSub}      accent="var(--green)" />
-            <Stat label="Racha"        value={streakDisplay}     sub={streakSub}       accent={blueColor} />
-            <Stat label="Tiempo total" value={totalTimeDisplay}  sub="esta temporada" />
+            <Stat label="ELO"        value={eloDisplay}        sub={eloSub}         accent="var(--text)" />
+            <Stat label="Wins"       value={winsDisplay}       sub={winrateSub}      accent="var(--green)" />
+            <Stat label="Streak"     value={streakDisplay}     sub={streakSub}       accent={blueColor} />
+            <Stat label="Total Time" value={totalTimeDisplay}  sub="this season" />
           </>
         )}
       </div>
@@ -144,9 +136,9 @@ export function ViewDashboard({ navigate, blueColor, redColor }: ViewDashboardPr
         {/* Recent matches */}
         <div className="card" style={{ padding: 20 }}>
           <div className="row" style={{ marginBottom: 14 }}>
-            <div className="t-h2">Historial reciente</div>
+            <div className="t-h2">Recent Matches</div>
             <div className="spacer" />
-            <button className="btn sm ghost" onClick={() => navigate('history')}>Ver todo <Icon name="chev-r" size={14}/></button>
+            <button className="btn sm ghost" onClick={() => navigate('history')}>View all <Icon name="chev-r" size={14}/></button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {isLoading ? (
@@ -160,7 +152,7 @@ export function ViewDashboard({ navigate, blueColor, redColor }: ViewDashboardPr
               ))
             ) : recentMatches.length === 0 ? (
               <div className="muted" style={{ fontSize: 13, padding: '12px 0', textAlign: 'center' }}>
-                Sin partidas recientes.
+                No recent matches.
               </div>
             ) : (
               recentMatches.map((match) => {
@@ -186,12 +178,12 @@ export function ViewDashboard({ navigate, blueColor, redColor }: ViewDashboardPr
                       </div>
                     </div>
                     <span className={`chip ${result === 'win' ? 'green' : result === 'loss' ? 'red' : ''}`}>
-                      {result === 'win' ? 'Victoria' : result === 'loss' ? 'Derrota' : 'Empate'}
+                      {result === 'win' ? 'Victory' : result === 'loss' ? 'Defeat' : 'Draw'}
                     </span>
-                    <div className="t-cap t-mono">{match.totalMoves} mov.</div>
+                    <div className="t-cap t-mono">{match.totalMoves} moves</div>
                     <div className="t-cap t-mono">{formatDuration(match.durationSeconds)}</div>
                     <div className="row" style={{ gap: 4 }}>
-                      <button className="btn sm ghost" title="Ver replay" onClick={() => navigate('replay')}>
+                      <button className="btn sm ghost" title="View replay" onClick={() => navigate('replay')}>
                         <Icon name="replay" size={14}/>
                       </button>
                     </div>
@@ -205,7 +197,7 @@ export function ViewDashboard({ navigate, blueColor, redColor }: ViewDashboardPr
         {/* Ranking */}
         <div className="card" style={{ padding: 20 }}>
           <div className="row" style={{ marginBottom: 14 }}>
-            <div className="t-h2">Ranking global</div>
+            <div className="t-h2">Global Ranking</div>
             <div className="spacer" />
             <span className="chip"><Icon name="globe" size={11}/> Global</span>
           </div>
@@ -235,7 +227,7 @@ export function ViewDashboard({ navigate, blueColor, redColor }: ViewDashboardPr
                     <div style={{ fontWeight: isMe ? 700 : 500, fontSize: 13 }}>{entry.profile.username}</div>
                     <div className="t-mono" style={{ fontSize: 12, color: 'var(--text-2)' }}>{entry.profile.rating}</div>
                     <div className="t-mono" style={{ fontSize: 11, color: 'var(--green)' }}>
-                      {winsSign}{entry.stats.wins}V
+                      {winsSign}{entry.stats.wins}W
                     </div>
                   </div>
                 );

@@ -1,7 +1,7 @@
 // src/hooks/useAudioSync.ts
 import { useEffect } from 'react';
 import { useSettingsStore } from '@/stores/settingsStore';
-import * as audioService from '@/services/audioService';
+import * as audioService from '@/services/audio.service';
 
 export function useAudioSync(): void {
   const { volumeMaster, volumeSfx, volumeMusic, mutedAll } = useSettingsStore();

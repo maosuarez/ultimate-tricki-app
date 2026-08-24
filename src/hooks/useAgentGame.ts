@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
-import { pythonAgentService } from '../services/pythonAgentService';
+import { pythonAgentService } from '@/services/native/python-agent.service';
 import type { PythonGameStatePayload } from '../types/agent.types';
 import type { GameState } from '../types/game';
 

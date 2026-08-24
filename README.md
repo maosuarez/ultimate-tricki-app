@@ -1,102 +1,108 @@
-# Tricki Avanzado
+# Tricki Avanzado (Ultimate Tic Tac Toe)
 
-> Ultimate Tic Tac Toe — Aplicación de escritorio multiplataforma
+> High-performance Ultimate Tic Tac Toe application built with **Tauri v2 + React 19 + TypeScript + Zustand + Rust + Supabase**.
 
 [![Tauri](https://img.shields.io/badge/Tauri-v2-blue)](https://v2.tauri.app)
-[![React](https://img.shields.io/badge/React-18-61dafb)](https://react.dev)
+[![React](https://img.shields.io/badge/React-19-61dafb)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)](https://typescriptlang.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## ¿Qué es Tricki Avanzado?
+## What is Tricki Avanzado?
 
-Una implementación de alta calidad de **Ultimate Tic Tac Toe** como aplicación de escritorio nativa, construida para durar. Soporta partidas locales, contra IA y (próximamente) online contra otros jugadores en tiempo real.
+A high-performance implementation of **Ultimate Tic Tac Toe** designed for both native desktop and web browsers. It supports local pass-and-play, AI matches (with built-in algorithms and custom Python agents), and real-time multiplayer.
 
-El diseño visual está inspirado en Chess.com: el tablero domina. La interfaz lo soporta sin ruido.
-
----
-
-## Stack tecnológico
-
-| Capa | Tecnología |
-|------|-----------|
-| Aplicación nativa | Tauri v2 |
-| UI | React 18 + TypeScript |
-| Build | Vite 5 |
-| Estilos | TailwindCSS |
-| Estado | Zustand |
-| Routing | React Router 6 |
-| Backend nativo | Rust (stable) |
-| Testing | Vitest + Playwright |
+The visual design is dark-first and focused: the board dominates the interface with clean, responsive feedback.
 
 ---
 
-## Inicio rápido
+## Tech Stack
 
-### Prerrequisitos
+| Layer | Technology |
+|---|---|
+| Desktop Native | Tauri v2 (Rust) |
+| Frontend UI | React 19 + TypeScript |
+| Build & Bundler | Vite 7 |
+| State Management | Zustand 5 |
+| Styling | Tailwind CSS + CSS Variables |
+| Backend & Cloud | Supabase (Auth, PostgreSQL, Realtime) |
+| Multiplayer Transport | WebSockets / Azure WebPubSub |
+| Package Manager | `pnpm` (Strictly required) |
+| Testing | Vitest |
 
-- Node.js 20+
-- Rust (stable, via [rustup](https://rustup.rs))
-- Dependencias del sistema para Tauri: [ver guía oficial](https://v2.tauri.app/start/prerequisites/)
+---
 
-### Instalación
+## Quick Start
+
+### Prerequisites
+
+- **Node.js**: >= 20.x
+- **pnpm**: >= 9.x (`npm install -g pnpm` or `corepack enable`)
+- **Rust**: Latest stable (`rustup update stable`)
+- **System Dependencies** for Tauri: See [Tauri Prerequisites Guide](https://v2.tauri.app/start/prerequisites/)
+
+### Installation
 
 ```bash
-# Clonar el repositorio
-git clone <repo-url> tricki-avanzado
-cd tricki-avanzado
+# 1. Clone the repository
+git clone https://github.com/your-username/ultimate-tricki-app.git
+cd ultimate-tricki-app
 
-# Instalar dependencias
-npm install
+# 2. Install dependencies
+pnpm install
 
-# Ejecutar en modo desarrollo
-npm run tauri dev
+# 3. Web Development Mode (Runs in browser at http://localhost:1420)
+pnpm dev
 
-# Build de producción
-npm run tauri build
+# 4. Desktop Development Mode (Runs with Tauri v2 native core)
+pnpm tauri dev
+
+# 5. Build Standalone Web Distribution
+pnpm run build:web
+
+# 6. Build Native Desktop App
+pnpm tauri build
 ```
 
 ---
 
-## Documentación
+## Specification & Single Source of Truth (OpenSpec)
 
-| Documento | Descripción |
-|-----------|-------------|
-| `docs/vision.md` | Visión del producto y objetivos a largo plazo |
-| `docs/architecture.md` | Arquitectura técnica completa y diagramas |
-| `docs/game-rules.md` | Reglas de Ultimate Tic Tac Toe |
-| `docs/frontend.md` | Estructura del frontend, componentes, rutas |
-| `docs/backend.md` | Capa Rust, comandos Tauri, persistencia |
-| `docs/multiplayer.md` | Estrategia y protocolo multiplayer (fase futura) |
-| `docs/ai-engine.md` | Motor de IA, algoritmos, niveles de dificultad |
-| `docs/ui-design.md` | Design system, tokens, componentes |
-| `docs/roadmap.md` | Fases de desarrollo y timeline |
-| `docs/coding-standards.md` | Estándares de código del equipo |
+All architecture, game rules, contracts, and system capabilities reside formally in **`openspec/specs/`**:
 
-### Para contribuidores / Claude Code
+| Capability | Location | Description |
+|---|---|---|
+| Architecture | `openspec/specs/architecture/spec.md` | Layering, unidirectional data flow, and persistence |
+| Game Engine | `openspec/specs/game-engine/spec.md` | 3×3 sub-board rules, validation, turns, and replays |
+| Desktop Native | `openspec/specs/desktop-native/spec.md` | Tauri v2 IPC, SQLite, and Python agent sandbox |
+| Cloud Backend | `openspec/specs/cloud-backend/spec.md` | Supabase Auth, PostgreSQL, Achievements, and Social |
+| AI Engine | `openspec/specs/ai-engine/spec.md` | Minimax, Alpha-Beta, MCTS, and Python runtime bridge |
+| Multiplayer | `openspec/specs/multiplayer/spec.md` | WebSocket transport, room lifecycle, and synchronization |
+| UI Design System | `openspec/specs/ui-design-system/spec.md` | Dark-first design tokens, layout, and Web Audio |
+| Web Distribution | `openspec/specs/web-distribution/spec.md` | Browser runtime adaptation and graceful native degradation |
+| Project Governance | `openspec/specs/project-governance/spec.md` | Contribution workflows, Code of Conduct, and security policies |
 
-Ver `.claude/` para el contexto optimizado para desarrollo con IA:
-- `project-context.md` — Contexto técnico completo
-- `architecture-rules.md` — Decisiones arquitectónicas
-- `ui-guidelines.md` — Sistema de diseño
-- `coding-rules.md` — Estándares de código
-- `game-domain.md` — Dominio del juego
-- `tasks/` — Backlog organizado por fase
+### Developer & Agent Guides
+- **`CONTRIBUTING.md`**: Contribution workflow, OpenSpec usage, and PR guidelines.
+- **`AGENTS.md`**: Master engineering guide, specialized agent roles (`game-agent`, `ui-agent`, etc.), and code conventions.
+- **`CLAUDE.md`**: Entry point for Claude Code referencing `@AGENTS.md`.
 
 ---
 
-## Plataformas soportadas
+## Supported Platforms
 
-| OS | Soporte |
-|----|---------|
-| Windows 10/11 | ✅ |
-| macOS 12+ | ✅ |
-| Linux (Ubuntu 20.04+, Fedora 35+) | ✅ |
+| Platform | Support |
+|---|---|
+| Windows 10 / 11 | ✅ Native |
+| macOS 12+ | ✅ Native |
+| Linux (Ubuntu, Fedora, Arch) | ✅ Native |
+| Modern Web Browsers (Chrome, Firefox, Safari, Edge) | ✅ Web Mode |
 
-Resoluciones soportadas: 1280×720 → 4K + ultrawide.
+Supported screen resolutions: 1280×720 up to 4K / ultrawide displays.
 
 ---
 
-## Licencia
+## License
 
-MIT
+This project is licensed under the [MIT License](LICENSE).

@@ -5,17 +5,12 @@ import { usePublicProfile } from '@/hooks/usePublicProfile';
 import type { ScreenName } from '../types/game';
 import type { UserProfile, UserStats } from '@/types/user.types';
 
-// ─── Prop types ───────────────────────────────────────────────────────────────
-
 interface ViewProfileProps {
   navigate: (screen: ScreenName) => void;
   blueColor: string;
   redColor: string;
-  /** When provided, shows the public profile of another user. Omit for own profile. */
   userId?: string;
 }
-
-// ─── Shared profile body ──────────────────────────────────────────────────────
 
 interface ProfileBodyProps {
   profile: UserProfile;
@@ -24,7 +19,6 @@ interface ProfileBodyProps {
   blueColor: string;
   redColor: string;
   navigate: (screen: ScreenName) => void;
-  /** Only shown when isSelf is false */
   friendRequestButton: React.ReactNode;
 }
 
@@ -43,11 +37,10 @@ function ProfileBody({
     ? Math.round((stats.wins / stats.totalMatches) * 100)
     : 0;
   const winrateSub   = stats
-    ? `${stats.wins} V · ${stats.losses} D · ${stats.draws} E`
-    : '— V · — D · — E';
+    ? `${stats.wins} W · ${stats.losses} L · ${stats.draws} D`
+    : '— W · — L · — D';
   const streakValue  = stats ? String(stats.winStreak) : '—';
 
-  // Format joined date from ISO string
   const joinedYear = profile.createdAt
     ? new Date(profile.createdAt).getFullYear()
     : null;
@@ -79,7 +72,7 @@ function ProfileBody({
               {joinedYear && (
                 <>
                   {profile.countryCode && <span>·</span>}
-                  <span>Miembro desde {joinedYear}</span>
+                  <span>Member since {joinedYear}</span>
                 </>
               )}
             </div>
@@ -89,8 +82,8 @@ function ProfileBody({
           </div>
           <div className="row" style={{ paddingBottom: 6, gap: 8 }}>
             {isSelf ? (
-              <button className="btn" disabled title="Próximamente">
-                <Icon name="settings" size={14}/> Editar perfil
+              <button className="btn" disabled title="Coming soon">
+                <Icon name="settings" size={14}/> Edit Profile
               </button>
             ) : (
               friendRequestButton
@@ -103,18 +96,18 @@ function ProfileBody({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-            <Stat label="ELO"      value={ratingValue}    sub="rating actual"  accent={blueColor} />
-            <Stat label="Partidas" value={totalMatches}    sub="total"          />
-            <Stat label="Winrate"  value={`${winrate}%`}   sub={winrateSub}     accent="var(--green)" />
-            <Stat label="Racha"    value={streakValue}     sub="actual"         accent="var(--amber)" />
+            <Stat label="ELO"      value={ratingValue}    sub="current rating" accent={blueColor} />
+            <Stat label="Matches"  value={totalMatches}   sub="total"          />
+            <Stat label="Winrate"  value={`${winrate}%`}  sub={winrateSub}     accent="var(--green)" />
+            <Stat label="Streak"   value={streakValue}    sub="current"        accent="var(--amber)" />
           </div>
 
-          {/* ELO graph — placeholder until real data is available */}
+          {/* ELO graph */}
           <div className="card" style={{ padding: 20 }}>
             <div className="row" style={{ marginBottom: 14 }}>
-              <div className="t-h3">Progresión ELO</div>
+              <div className="t-h3">Rating Progression</div>
               <div className="spacer"/>
-              <span className="chip amber" style={{ fontSize: 11 }}>Próximamente</span>
+              <span className="chip amber" style={{ fontSize: 11 }}>Coming Soon</span>
             </div>
             <div style={{
               height: 120,
@@ -126,26 +119,26 @@ function ProfileBody({
               background: 'var(--surface-2)',
               border: '1px dashed var(--border)',
             }}>
-              El historial ELO estará disponible próximamente
+              Rating history graph will be available soon
             </div>
           </div>
         </div>
 
-        {/* Right column — insights */}
+        {/* Right column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="card" style={{ padding: 18 }}>
             <div className="row" style={{ marginBottom: 14 }}>
-              <div className="t-h3">Patrones de juego</div>
+              <div className="t-h3">Playstyle Insights</div>
               <div className="spacer"/>
-              <span className="chip amber" style={{ fontSize: 11 }}>Próximamente</span>
+              <span className="chip amber" style={{ fontSize: 11 }}>Coming Soon</span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-3)', textAlign: 'center', padding: '16px 0' }}>
-              El análisis de patrones estará disponible próximamente
+              Playstyle insights will be available soon
             </div>
           </div>
           <div style={{ textAlign: 'center' as const }}>
             <button className="btn ghost sm" onClick={() => navigate('home')} style={{ marginTop: 4 }}>
-              <Icon name="arrow-l" size={13}/> Volver
+              <Icon name="arrow-l" size={13}/> Back
             </button>
           </div>
         </div>
@@ -153,8 +146,6 @@ function ProfileBody({
     </div>
   );
 }
-
-// ─── Own profile view ─────────────────────────────────────────────────────────
 
 interface OwnProfileViewProps {
   navigate: (screen: ScreenName) => void;
@@ -168,7 +159,7 @@ function OwnProfileView({ navigate, blueColor, redColor }: OwnProfileViewProps):
   if (isLoading) {
     return (
       <div className="fade-in" style={{ display: 'grid', placeItems: 'center', height: '100%' }}>
-        <div className="t-cap" style={{ color: 'var(--text-3)' }}>Cargando perfil…</div>
+        <div className="t-cap" style={{ color: 'var(--text-3)' }}>Loading profile…</div>
       </div>
     );
   }
@@ -178,10 +169,10 @@ function OwnProfileView({ navigate, blueColor, redColor }: OwnProfileViewProps):
       <div className="fade-in" style={{ display: 'grid', placeItems: 'center', height: '100%' }}>
         <div style={{ textAlign: 'center' as const }}>
           <div className="t-cap" style={{ color: 'var(--red)', marginBottom: 12 }}>
-            {error ?? 'No se pudo cargar el perfil'}
+            {error ?? 'Could not load profile'}
           </div>
           <button className="btn ghost sm" onClick={() => navigate('home')}>
-            <Icon name="arrow-l" size={13}/> Inicio
+            <Icon name="arrow-l" size={13}/> Home
           </button>
         </div>
       </div>
@@ -200,8 +191,6 @@ function OwnProfileView({ navigate, blueColor, redColor }: OwnProfileViewProps):
     />
   );
 }
-
-// ─── Public profile view ──────────────────────────────────────────────────────
 
 interface PublicProfileViewProps {
   userId: string;
@@ -226,7 +215,7 @@ function PublicProfileView({ userId, navigate, blueColor, redColor }: PublicProf
   if (loading) {
     return (
       <div className="fade-in" style={{ display: 'grid', placeItems: 'center', height: '100%' }}>
-        <div className="t-cap" style={{ color: 'var(--text-3)' }}>Cargando perfil…</div>
+        <div className="t-cap" style={{ color: 'var(--text-3)' }}>Loading profile…</div>
       </div>
     );
   }
@@ -236,10 +225,10 @@ function PublicProfileView({ userId, navigate, blueColor, redColor }: PublicProf
       <div className="fade-in" style={{ display: 'grid', placeItems: 'center', height: '100%' }}>
         <div style={{ textAlign: 'center' as const }}>
           <div className="t-cap" style={{ color: 'var(--red)', marginBottom: 12 }}>
-            {error ?? 'No se pudo cargar el perfil'}
+            {error ?? 'Could not load profile'}
           </div>
           <button className="btn ghost sm" onClick={() => navigate('home')}>
-            <Icon name="arrow-l" size={13}/> Inicio
+            <Icon name="arrow-l" size={13}/> Home
           </button>
         </div>
       </div>
@@ -254,7 +243,7 @@ function PublicProfileView({ userId, navigate, blueColor, redColor }: PublicProf
         disabled={requestSent || requestLoading}
       >
         <Icon name="plus" size={14}/>
-        {requestSent ? 'Solicitud enviada' : requestLoading ? 'Enviando…' : 'Solicitar amistad'}
+        {requestSent ? 'Request Sent' : requestLoading ? 'Sending…' : 'Add Friend'}
       </button>
       {requestError && (
         <span className="t-cap" style={{ color: 'var(--red)', fontSize: 11 }}>{requestError}</span>
@@ -274,8 +263,6 @@ function PublicProfileView({ userId, navigate, blueColor, redColor }: PublicProf
     />
   );
 }
-
-// ─── Public export ────────────────────────────────────────────────────────────
 
 export function ViewProfile({ navigate, blueColor, redColor, userId }: ViewProfileProps): React.ReactElement {
   if (userId) {

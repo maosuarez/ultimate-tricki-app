@@ -75,12 +75,10 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
   const isReady = myPlayer?.ready ?? false;
   const allReady = players.length >= 2 && players.every(p => p.ready);
 
-  // Navigate to game when phase changes to playing
   React.useEffect(() => {
     if (phase === 'playing') navigate('game');
   }, [phase, navigate]);
 
-  // Auto-scroll chat
   React.useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [chatItems]);
@@ -168,7 +166,6 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
             className="lobby-ping"
             style={{ position: 'relative', width: 180, height: 80, margin: '0 auto 28px' }}
           >
-            {/* X piece — center at x:24, y:40 */}
             <div style={{
               position: 'absolute', left: 4, top: '50%', marginTop: -20,
               width: 40, height: 40,
@@ -180,7 +177,6 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
               </svg>
             </div>
 
-            {/* O piece — center at x:156, y:40 */}
             <div style={{
               position: 'absolute', right: 4, top: '50%', marginTop: -20,
               width: 40, height: 40,
@@ -191,7 +187,6 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
               </svg>
             </div>
 
-            {/* Ball — starts at X center (x:24-5=19), opacity:0 until animation kicks in */}
             <div style={{
               position: 'absolute',
               left: 19,
@@ -207,13 +202,13 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
             }} />
           </div>
 
-          <div className="t-h2" style={{ marginBottom: 8 }}>La partida está por comenzar</div>
+          <div className="t-h2" style={{ marginBottom: 8 }}>Match is about to begin</div>
           <div className="t-cap" style={{ marginBottom: 24, color: 'var(--text-2, #A1A1AA)', maxWidth: 320, marginInline: 'auto' }}>
-            Crea una sala y comparte el código con tu rival, o únete a una partida existente para comenzar.
+            Create a room and share the code with your opponent, or join an existing match to begin.
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-            <button className="btn primary" onClick={() => navigate('create')}>Crear partida</button>
-            <button className="btn ghost" onClick={() => navigate('join')}>Ingresar código</button>
+            <button className="btn primary" onClick={() => navigate('create')}>Create Game</button>
+            <button className="btn ghost" onClick={() => navigate('join')}>Enter Code</button>
           </div>
         </div>
       </div>
@@ -229,18 +224,18 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
             {roomCode ? (
               <div className="card" style={{ padding: '10px 14px', display: 'flex', gap: 14, alignItems: 'center' }}>
                 <div>
-                  <div className="t-tag">Código de sala</div>
+                  <div className="t-tag">Room Code</div>
                   <div className="t-mono" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '.16em' }}>{roomCode}</div>
                 </div>
                 <button
                   className="btn sm"
-                  title={copied ? 'Copiado' : 'Copiar código'}
-                  aria-label={copied ? 'Código copiado al portapapeles' : 'Copiar código de sala'}
+                  title={copied ? 'Copied' : 'Copy code'}
+                  aria-label={copied ? 'Room code copied to clipboard' : 'Copy room code'}
                   onClick={copyCode}
                   style={{ minWidth: 80, transition: 'color 150ms ease-out' }}
                 >
                   {copied ? (
-                    <><Icon name="check" size={14}/> Copiado!</>
+                    <><Icon name="check" size={14}/> Copied!</>
                   ) : (
                     <Icon name="copy" size={14}/>
                   )}
@@ -254,10 +249,10 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
 
             <button
               className="btn danger sm"
-              aria-label="Abandonar sala y volver al inicio"
+              aria-label="Leave room and return to home"
               onClick={handleLeaveLobby}
             >
-              <Icon name="x" size={14}/> Abandonar sala
+              <Icon name="x" size={14}/> Leave Room
             </button>
           </div>
 
@@ -265,17 +260,17 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
           <div className="row" style={{ alignItems: 'flex-start' }}>
             <div>
               <div className="t-h1" style={{ marginBottom: 4 }}>
-                {isConnecting ? 'Conectando a la sala…' : `Sala de ${myName}`}
+                {isConnecting ? 'Connecting to room…' : `${myName}'s Room`}
               </div>
               <div className="row" style={{ gap: 8 }}>
                 {isConnecting ? (
-                  <span className="chip amber">Conectando…</span>
+                  <span className="chip amber">Connecting…</span>
                 ) : (
-                  <span className="chip green"><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }}/> En línea</span>
+                  <span className="chip green"><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }}/> Online</span>
                 )}
-                <span className="chip"><Icon name={isPublic ? 'globe' : 'lock'} size={11}/> {isPublic ? 'Pública' : 'Privada'}</span>
+                <span className="chip"><Icon name={isPublic ? 'globe' : 'lock'} size={11}/> {isPublic ? 'Public' : 'Private'}</span>
                 {mySide && (
-                  <span className="chip"><Icon name="user" size={11}/> Juegas como {mySide}</span>
+                  <span className="chip"><Icon name="user" size={11}/> Playing as {mySide}</span>
                 )}
               </div>
             </div>
@@ -285,7 +280,7 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
                 className={`btn${isReady ? '' : ' primary'}`}
                 onClick={() => onReady?.(!isReady)}
               >
-                {isReady ? 'No listo' : 'Estoy listo'}
+                {isReady ? 'Not Ready' : 'Ready'}
               </button>
             )}
             {!isPublic && isHost && (
@@ -294,11 +289,11 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
                 disabled={!allReady}
                 onClick={() => onStartGame?.()}
               >
-                <Icon name="play" size={14}/> Iniciar partida <Kbd>Enter</Kbd>
+                <Icon name="play" size={14}/> Start Match <Kbd>Enter</Kbd>
               </button>
             )}
             {isPublic && (
-              <span className="chip amber">Esperando oponente para iniciar…</span>
+              <span className="chip amber">Waiting for opponent to start…</span>
             )}
           </div>
         </div>
@@ -306,7 +301,7 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
         {/* Players */}
         <div className="card" style={{ padding: 18 }}>
           <div className="row" style={{ marginBottom: 14 }}>
-            <div className="t-h2">Jugadores</div>
+            <div className="t-h2">Players</div>
             <span className="chip">{players.length} / 2</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -323,7 +318,7 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <b style={{ fontSize: 14 }}>{p.name}</b>
-                    {p.name === myName && <span className="chip" style={{ fontSize: 9 }}>TÚ</span>}
+                    {p.name === myName && <span className="chip" style={{ fontSize: 9 }}>YOU</span>}
                     {p.isHost && <span className="chip amber"><Icon name="crown" size={11}/> HOST</span>}
                   </div>
                   <div className="t-cap t-mono">{p.elo > 0 ? `ELO ${p.elo}` : '—'}</div>
@@ -339,8 +334,8 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
                   </div>
                 )}
                 {p.ready
-                  ? <span className="chip green"><Icon name="check" size={11}/> LISTO</span>
-                  : <span className="chip">esperando</span>}
+                  ? <span className="chip green"><Icon name="check" size={11}/> READY</span>
+                  : <span className="chip">waiting</span>}
               </div>
             ))}
             {players.length < 2 && (
@@ -349,7 +344,7 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
                 border: '1px dashed var(--border-hi)',
                 color: 'var(--text-3)', justifyContent: 'center', gap: 8,
               }}>
-                <Icon name="plus" size={14}/> <span style={{ fontSize: 13 }}>Esperando oponente…</span>
+                <Icon name="plus" size={14}/> <span style={{ fontSize: 13 }}>Waiting for opponent…</span>
               </div>
             )}
           </div>
@@ -357,10 +352,10 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
 
         {/* Match settings */}
         <div className="card" style={{ padding: 18 }}>
-          <div className="t-h2" style={{ marginBottom: 14 }}>Configuración</div>
+          <div className="t-h2" style={{ marginBottom: 14 }}>Match Settings</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-            <SettingRow icon={isPublic ? 'globe' : 'lock'} label="Privacidad" value={isPublic ? 'Pública · lista de salas' : 'Privada · solo invitados'} />
-            <SettingRow icon="gamepad" label="Modo" value={isPublic ? 'Online · Público' : 'Online · Privado'} />
+            <SettingRow icon={isPublic ? 'globe' : 'lock'} label="Privacy" value={isPublic ? 'Public · public room list' : 'Private · invite only'} />
+            <SettingRow icon="gamepad" label="Mode" value={isPublic ? 'Online · Public' : 'Online · Private'} />
           </div>
         </div>
       </div>
@@ -368,16 +363,16 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
       {/* Chat */}
       <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div className="row" style={{ padding: '14px 14px 8px' }}>
-          <div className="t-h3">Chat de sala</div>
+          <div className="t-h3">Room Chat</div>
           <div className="spacer"/>
           <span className={`chip ${status === 'connected' ? 'green' : 'amber'}`}>
-            {status === 'connected' ? 'en línea' : 'conectando…'}
+            {status === 'connected' ? 'online' : 'connecting…'}
           </span>
         </div>
         <div ref={chatRef} style={{ flex: 1, padding: 14, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {chatEvents.length === 0 && (
             <div className="t-cap" style={{ textAlign: 'center', color: 'var(--text-3)' }}>
-              {isConnecting ? 'Conectando…' : 'Sin mensajes aún'}
+              {isConnecting ? 'Connecting…' : 'No messages yet'}
             </div>
           )}
           {chatEvents.map((ev, i) => <ChatEvent key={i} ev={ev} />)}
@@ -385,7 +380,7 @@ export function ViewLobby({ navigate, blueColor, redColor, onReady, onStartGame,
         <div style={{ borderTop: '1px solid var(--border)', padding: 10, display: 'flex', gap: 6 }}>
           <input
             className="input"
-            placeholder="Escribe..."
+            placeholder="Type a message..."
             value={chatInput}
             onChange={e => setChatInput(e.target.value)}
             onKeyDown={handleChatKey}

@@ -6,12 +6,11 @@ import { supabaseService } from '../services/supabase.service';
 import { useActiveMatchGuard } from '@/hooks/useActiveMatchGuard';
 import { ActiveMatchBlockedModal } from '@/components/ui/ActiveMatchBlockedModal';
 
-// Valid chars: A-Z excluding I and O, plus 2-9
 const VALID_CHAR_RE = /^[A-HJ-NP-Z2-9]$/;
 
 interface CodeInputProps {
-  value: string; // up to 6 chars, no dash
-  onChange: (code: string) => void; // always 6-char string (partial allowed), no dash
+  value: string;
+  onChange: (code: string) => void;
 }
 
 function CodeInput({ value, onChange }: CodeInputProps): React.ReactElement {
@@ -24,7 +23,6 @@ function CodeInput({ value, onChange }: CodeInputProps): React.ReactElement {
     React.useRef<HTMLInputElement>(null),
   ] as const;
 
-  // Derive per-cell chars from the value string (no dash)
   const chars = Array.from({ length: 6 }, (_, i) => value[i] ?? '');
 
   function focusCell(index: number): void {
@@ -70,7 +68,6 @@ function CodeInput({ value, onChange }: CodeInputProps): React.ReactElement {
     const raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!raw) return;
 
-    // Find the first new char relative to the current cell value
     const incoming = raw.replace(chars[index], '').slice(-1);
     if (!incoming || !VALID_CHAR_RE.test(incoming)) return;
 
@@ -86,7 +83,6 @@ function CodeInput({ value, onChange }: CodeInputProps): React.ReactElement {
     const valid = pasted.split('').filter((c) => VALID_CHAR_RE.test(c)).slice(0, 6);
     const next = Array.from({ length: 6 }, (_, i) => valid[i] ?? '');
     updateChars(next);
-    // Focus last filled cell or the cell after the last filled one
     const lastFilled = valid.length - 1;
     focusCell(Math.min(lastFilled + 1, 5));
   }
@@ -161,30 +157,30 @@ interface ViewJoinProps {
 type FilterKey = 'all' | 'blitz' | 'rapid' | 'ranked' | 'eu' | 'na';
 
 const FILTERS: [FilterKey, string][] = [
-  ['all', 'Todas'],
+  ['all', 'All'],
   ['blitz', 'Blitz'],
-  ['rapid', 'Rápida'],
+  ['rapid', 'Rapid'],
   ['ranked', 'Ranked'],
   ['eu', 'EU'],
   ['na', 'NA'],
 ];
 
 const TIME_CONTROL_LABEL: Record<RoomListing['timeControl'], string> = {
-  none:   'Sin límite',
+  none:   'No limit',
   blitz:  'Blitz 5+3',
-  rapid:  'Rápida 10+5',
+  rapid:  'Rapid 10+5',
   custom: 'Custom',
 };
 
 function relativeTime(isoStr: string): string {
   const diffMs = Date.now() - new Date(isoStr).getTime();
   const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return 'ahora';
-  if (mins === 1) return 'hace 1 min';
-  return `hace ${mins} min`;
+  if (mins < 1) return 'now';
+  if (mins === 1) return '1 min ago';
+  return `${mins} min ago`;
 }
 
-export function ViewJoin({ navigate, blueColor: _blueColor, redColor: _redColor, playerName = 'Jugador', onJoinRoom }: ViewJoinProps): React.ReactElement {
+export function ViewJoin({ navigate, blueColor: _blueColor, redColor: _redColor, playerName = 'Player', onJoinRoom }: ViewJoinProps): React.ReactElement {
   const { isBlocked, closeBlockedModal } = useActiveMatchGuard('join');
   const [filter, setFilter] = React.useState<FilterKey>('all');
   const [joinCode, setJoinCode] = React.useState('');
@@ -192,7 +188,6 @@ export function ViewJoin({ navigate, blueColor: _blueColor, redColor: _redColor,
   const [rooms, setRooms] = React.useState<RoomListing[]>([]);
   const [loading, setLoading] = React.useState(true);
 
-  // Initial load + Realtime subscription
   React.useEffect(() => {
     void supabaseService.rooms.listWaiting().then((data) => {
       setRooms(data);
@@ -210,11 +205,9 @@ export function ViewJoin({ navigate, blueColor: _blueColor, redColor: _redColor,
     return unsub;
   }, []);
 
-  // Apply client-side filters
   const filtered = rooms.filter((r) => {
     if (filter === 'blitz' && r.timeControl !== 'blitz') return false;
     if (filter === 'rapid' && r.timeControl !== 'rapid') return false;
-    // 'ranked', 'eu', 'na' are placeholder filters — show all
     if (search) {
       return r.hostName.toLowerCase().includes(search.toLowerCase());
     }
@@ -229,20 +222,19 @@ export function ViewJoin({ navigate, blueColor: _blueColor, redColor: _redColor,
         navigate={navigate}
       />
       <div className="row" style={{ marginBottom: 18 }}>
-        <button className="btn ghost sm" onClick={() => navigate('home')}><Icon name="arrow-l" size={14}/> Inicio</button>
+        <button className="btn ghost sm" onClick={() => navigate('home')}><Icon name="arrow-l" size={14}/> Home</button>
         <div className="spacer"/>
-        <button className="btn primary" onClick={() => navigate('create')}><Icon name="plus" size={14}/> Crear partida</button>
+        <button className="btn primary" onClick={() => navigate('create')}><Icon name="plus" size={14}/> Create Game</button>
       </div>
-      <div className="t-h1" style={{ marginBottom: 4 }}>Unirse a partida</div>
-      <div className="muted" style={{ fontSize: 13, marginBottom: 22 }}>Introduce un código de sala o explora partidas públicas.</div>
+      <div className="t-h1" style={{ marginBottom: 4 }}>Join Game</div>
+      <div className="muted" style={{ fontSize: 13, marginBottom: 22 }}>Enter a room code or browse public games.</div>
 
       {/* Code joiner */}
       <div className="card" style={{ padding: 20, marginBottom: 18 }}>
-        <div className="t-tag" style={{ marginBottom: 12 }}>Código de sala privada</div>
+        <div className="t-tag" style={{ marginBottom: 12 }}>Private Room Code</div>
         <CodeInput
           value={joinCode.replace(/-/g, '')}
           onChange={(raw) => {
-            // Insert dash after 3rd char when 4+ chars present
             const withDash = raw.length > 3 ? raw.slice(0, 3) + '-' + raw.slice(3) : raw;
             setJoinCode(withDash);
           }}
@@ -253,9 +245,9 @@ export function ViewJoin({ navigate, blueColor: _blueColor, redColor: _redColor,
             disabled={joinCode.length < 7 || !onJoinRoom}
             onClick={() => { onJoinRoom?.(joinCode, playerName); navigate('lobby'); }}
           >
-            Unirse <Icon name="arrow-r" size={14}/>
+            Join <Icon name="arrow-r" size={14}/>
           </button>
-          <span className="t-cap">Pega un código compartido o usa el explorador abajo.</span>
+          <span className="t-cap">Paste a shared code or browse available rooms below.</span>
         </div>
       </div>
 
@@ -269,7 +261,7 @@ export function ViewJoin({ navigate, blueColor: _blueColor, redColor: _redColor,
             <Icon name="search" size={14} style={{ color: 'var(--text-3)' }}/>
             <input
               style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 13, width: '100%' }}
-              placeholder="Buscar por host..."
+              placeholder="Search by host..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -302,19 +294,19 @@ export function ViewJoin({ navigate, blueColor: _blueColor, redColor: _redColor,
           fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' as const,
           color: 'var(--text-3)',
         }}>
-          <div>Sala</div><div>Host</div><div>Modo</div><div>Creada</div><div>Jug.</div><div></div>
+          <div>Room</div><div>Host</div><div>Mode</div><div>Created</div><div>Players</div><div></div>
         </div>
 
         {loading && (
           <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
-            Cargando partidas…
+            Loading games…
           </div>
         )}
 
         {!loading && filtered.length === 0 && (
           <div style={{ padding: '32px 16px', textAlign: 'center' }}>
-            <div style={{ color: 'var(--text-2)', fontSize: 14, fontWeight: 600 }}>No hay partidas públicas disponibles</div>
-            <div className="t-cap" style={{ marginTop: 6 }}>Crea una para empezar</div>
+            <div style={{ color: 'var(--text-2)', fontSize: 14, fontWeight: 600 }}>No public games available</div>
+            <div className="t-cap" style={{ marginTop: 6 }}>Create one to start playing</div>
           </div>
         )}
 
@@ -341,7 +333,7 @@ export function ViewJoin({ navigate, blueColor: _blueColor, redColor: _redColor,
               className="btn sm primary"
               onClick={() => { onJoinRoom?.(r.code, playerName); navigate('lobby'); }}
             >
-              Unirme
+              Join
             </button>
           </div>
         ))}

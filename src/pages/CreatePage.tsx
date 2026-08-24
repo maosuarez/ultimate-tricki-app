@@ -123,7 +123,7 @@ function SummaryRow({ k, v }: SummaryRowProps): React.ReactElement {
   );
 }
 
-export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Jugador', onCreateRoom }: ViewCreateProps): React.ReactElement {
+export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Player', onCreateRoom }: ViewCreateProps): React.ReactElement {
   const { isBlocked, closeBlockedModal } = useActiveMatchGuard('create');
   const [mode, setMode] = React.useState<GameMode>('local');
   const [diff, setDiff] = React.useState<AIDiff>('hard');
@@ -140,20 +140,17 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
     if (!FEATURES.MULTIPLAYER && (mode === 'online' || mode === 'private')) {
       setMode('local');
     }
-  }, []); // solo en mount
+  }, []);
 
-  // Sync privacy automatically based on mode — no user choice needed
   React.useEffect(() => {
     if (mode === 'private') setPrivacy('private');
     else setPrivacy('public');
   }, [mode]);
 
-  // When switching to AI mode, force difficulty to 'easy' (only available agent)
   React.useEffect(() => {
     if (mode === 'ai') setDiff('easy');
   }, [mode]);
 
-  // Keyboard shortcuts
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -164,7 +161,6 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  // handleCreate is stable per render — navigate is a prop, mode is state
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, time, diff]);
 
@@ -178,9 +174,9 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
 
   const handleCreate = () => {
     const secs = timeToSeconds(time);
-    const myName = playerName.trim() || 'Jugador 1';
+    const myName = playerName.trim() || 'Player 1';
     if (mode === 'local') {
-      startLocalGame(myName, 'Jugador 2', secs);
+      startLocalGame(myName, 'Player 2', secs);
       navigate('game');
     } else if (mode === 'ai') {
       startAiGame(myName, 'builtin.flat_mc.easy', secs);
@@ -194,9 +190,9 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
     }
   };
 
-  const modeLabel = mode === 'online' ? 'Online · Ranked' : mode === 'ai' ? 'vs IA' : mode === 'local' ? 'Local' : 'Privada';
-  const diffLabel = diff === 'easy' ? 'Fácil' : diff === 'med' ? 'Medio' : diff === 'hard' ? 'Difícil' : 'Experto';
-  const timeLabel = time === 'blitz' ? '5+3' : time === 'rapid' ? '10+5' : time === 'none' ? 'sin límite' : `${customMinutes}+${customIncrement}`;
+  const modeLabel = mode === 'online' ? 'Online · Ranked' : mode === 'ai' ? 'vs AI' : mode === 'local' ? 'Local' : 'Private';
+  const diffLabel = diff === 'easy' ? 'Easy' : diff === 'med' ? 'Medium' : diff === 'hard' ? 'Hard' : 'Expert';
+  const timeLabel = time === 'blitz' ? '5+3' : time === 'rapid' ? '10+5' : time === 'none' ? 'No limit' : `${customMinutes}+${customIncrement}`;
 
   const isDisabled = (mode === 'online' && !onCreateRoom) || (mode === 'private' && !onCreateRoom);
   const timeStep = mode === 'ai' ? 3 : 2;
@@ -223,7 +219,6 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
     setMode(t.mode);
     setDiff(t.diff);
     setTime(t.time);
-    // privacy syncs via useEffect on mode change
   };
 
   const visibleTemplates = [...templates]
@@ -239,70 +234,70 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
       />
       <div style={{ maxWidth: 1080, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
-        <button className="btn ghost sm" onClick={() => navigate('home')}><Icon name="arrow-l" size={14}/> Inicio</button>
-        <div className="t-h1" style={{ marginTop: 12 }}>Crear partida</div>
-        <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Configura tu partida.</div>
+        <button className="btn ghost sm" onClick={() => navigate('home')}><Icon name="arrow-l" size={14}/> Home</button>
+        <div className="t-h1" style={{ marginTop: 12 }}>Create Game</div>
+        <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Configure your match parameters.</div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 18 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* MODO */}
-          <Section title="Modo de juego" step={1}>
+          {/* MODE */}
+          <Section title="Game Mode" step={1}>
             <Grid4>
-              <Card2 active={mode === 'local'} onClick={() => setMode('local')} icon="users" title="Local" desc="2 jugadores en el mismo equipo" />
-              <Card2 active={mode === 'ai'} onClick={() => setMode('ai')} icon="cpu" title="Contra IA" desc="Desafía al motor" badge="Beta" />
+              <Card2 active={mode === 'local'} onClick={() => setMode('local')} icon="users" title="Local" desc="2 players on the same device" />
+              <Card2 active={mode === 'ai'} onClick={() => setMode('ai')} icon="cpu" title="Against AI" desc="Challenge the engine" badge="Beta" />
               {FEATURES.MULTIPLAYER ? (
                 <>
-                  <Card2 active={mode === 'online'} onClick={() => setMode('online')} icon="globe" title="Online" desc="Multijugador en línea" badge="Beta" />
-                  <Card2 active={mode === 'private'} onClick={() => setMode('private')} icon="lock" title="Sala privada" desc="Con código de invitación" />
+                  <Card2 active={mode === 'online'} onClick={() => setMode('online')} icon="globe" title="Online" desc="Online multiplayer" badge="Beta" />
+                  <Card2 active={mode === 'private'} onClick={() => setMode('private')} icon="lock" title="Private Room" desc="With invite code" />
                 </>
               ) : (
                 <>
                   <div style={{ opacity: 0.4, pointerEvents: 'none' }}>
-                    <Card2 active={false} onClick={() => {}} icon="globe" title="Online" desc="Multijugador en línea" badge="No disponible" />
+                    <Card2 active={false} onClick={() => {}} icon="globe" title="Online" desc="Online multiplayer" badge="Unavailable" />
                   </div>
                   <div style={{ opacity: 0.4, pointerEvents: 'none' }}>
-                    <Card2 active={false} onClick={() => {}} icon="lock" title="Sala privada" desc="Con código de invitación" badge="No disponible" />
+                    <Card2 active={false} onClick={() => {}} icon="lock" title="Private Room" desc="With invite code" badge="Unavailable" />
                   </div>
                 </>
               )}
             </Grid4>
           </Section>
 
-          {/* DIFICULTAD (solo si AI) */}
+          {/* DIFFICULTY (AI only) */}
           {mode === 'ai' && (
-            <Section title="Dificultad de la IA" step={2}>
+            <Section title="AI Difficulty" step={2}>
               <Grid4>
-                <Card2 active={diff === 'easy'} onClick={() => setDiff('easy')} icon="star" title="Fácil" desc="ELO ~1100 · ideal para aprender" />
+                <Card2 active={diff === 'easy'} onClick={() => setDiff('easy')} icon="star" title="Easy" desc="ELO ~1100 · ideal for learning" />
                 <div style={{ opacity: 0.4, pointerEvents: 'none' }}>
-                  <Card2 active={diff === 'med'} onClick={() => setDiff('med')} icon="star" title="Medio" desc="ELO ~1500 · juego sólido" badge="Próximamente" />
+                  <Card2 active={diff === 'med'} onClick={() => setDiff('med')} icon="star" title="Medium" desc="ELO ~1500 · solid play" badge="Coming Soon" />
                 </div>
                 <div style={{ opacity: 0.4, pointerEvents: 'none' }}>
-                  <Card2 active={diff === 'hard'} onClick={() => setDiff('hard')} icon="star" title="Difícil" desc="ELO ~1850 · evalúa 5 jugadas" badge="Próximamente" />
+                  <Card2 active={diff === 'hard'} onClick={() => setDiff('hard')} icon="star" title="Hard" desc="ELO ~1850 · evaluates 5 moves" badge="Coming Soon" />
                 </div>
                 <div style={{ opacity: 0.4, pointerEvents: 'none' }}>
-                  <Card2 active={diff === 'expert'} onClick={() => setDiff('expert')} icon="sparkle" title="Experto" desc="ELO 2100+ · MCTS profundo" badge="Próximamente" />
+                  <Card2 active={diff === 'expert'} onClick={() => setDiff('expert')} icon="sparkle" title="Expert" desc="ELO 2100+ · deep MCTS" badge="Coming Soon" />
                 </div>
               </Grid4>
             </Section>
           )}
 
-          {/* TIEMPO */}
-          <Section title="Control de tiempo" step={timeStep}>
+          {/* TIME */}
+          <Section title="Time Control" step={timeStep}>
             <Grid4>
-              <Card2 active={time === 'none'} onClick={() => setTime('none')} icon="clock" title="Sin límite" desc="Casual / análisis" />
-              <Card2 active={time === 'blitz'} onClick={() => setTime('blitz')} icon="bolt" title="Blitz" desc="5 min + 3 s/jugada" />
-              <Card2 active={time === 'rapid'} onClick={() => setTime('rapid')} icon="clock" title="Rápida" desc="10 min + 5 s/jugada" />
-              <Card2 active={time === 'custom'} onClick={() => setTime('custom')} icon="settings" title="Personalizada" desc="Define los parámetros" />
+              <Card2 active={time === 'none'} onClick={() => setTime('none')} icon="clock" title="No Limit" desc="Casual / analysis" />
+              <Card2 active={time === 'blitz'} onClick={() => setTime('blitz')} icon="bolt" title="Blitz" desc="5 min + 3 s/move" />
+              <Card2 active={time === 'rapid'} onClick={() => setTime('rapid')} icon="clock" title="Rapid" desc="10 min + 5 s/move" />
+              <Card2 active={time === 'custom'} onClick={() => setTime('custom')} icon="settings" title="Custom" desc="Define parameters" />
             </Grid4>
             {time === 'custom' && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
                 <div>
-                  <div className="t-cap" style={{ marginBottom: 4 }}>Minutos base</div>
+                  <div className="t-cap" style={{ marginBottom: 4 }}>Base minutes</div>
                   <input className="input mono" value={customMinutes} onChange={e => setCustomMinutes(Math.max(1, parseInt(e.target.value) || 1))} type="number" min="1" max="60" />
                 </div>
                 <div>
-                  <div className="t-cap" style={{ marginBottom: 4 }}>Incremento por jugada (s)</div>
+                  <div className="t-cap" style={{ marginBottom: 4 }}>Increment per move (s)</div>
                   <input className="input mono" value={customIncrement} onChange={e => setCustomIncrement(Math.max(0, parseInt(e.target.value) || 0))} type="number" min="0" max="60" />
                 </div>
               </div>
@@ -310,17 +305,17 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
           </Section>
         </div>
 
-        {/* Panel lateral */}
+        {/* Sidebar Panel */}
         <div style={{ position: 'sticky', top: 0 }}>
-          {/* Resumen */}
+          {/* Summary */}
           <div className="card" style={{ padding: 18 }}>
-            <div className="t-tag" style={{ marginBottom: 10 }}>Resumen</div>
+            <div className="t-tag" style={{ marginBottom: 10 }}>Summary</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-              <SummaryRow k="Modo" v={modeLabel} />
-              {mode === 'ai' && <SummaryRow k="Dificultad" v={diffLabel} />}
-              <SummaryRow k="Tiempo" v={timeLabel} />
-              <SummaryRow k="ELO impactado" v={mode === 'online' ? 'Sí, ±18' : 'No'} />
-              <SummaryRow k="Espectadores" v="Permitidos" />
+              <SummaryRow k="Mode" v={modeLabel} />
+              {mode === 'ai' && <SummaryRow k="Difficulty" v={diffLabel} />}
+              <SummaryRow k="Time" v={timeLabel} />
+              <SummaryRow k="Rating Impact" v={mode === 'online' ? 'Yes, ±18' : 'No'} />
+              <SummaryRow k="Spectators" v="Allowed" />
             </div>
             <button
               className="btn primary lg"
@@ -329,29 +324,29 @@ export function ViewCreate({ navigate, blueColor: _blueColor, playerName = 'Juga
               disabled={isDisabled}
             >
               <Icon name="play" size={14}/>
-              {mode === 'online' ? 'Crear sala pública' : mode === 'private' ? 'Crear sala privada' : mode === 'ai' ? 'Jugar contra Flattie' : 'Iniciar partida local'}
+              {mode === 'online' ? 'Create Public Room' : mode === 'private' ? 'Create Private Room' : mode === 'ai' ? 'Play against Flattie' : 'Start Local Game'}
             </button>
             <button className="btn ghost" style={{ width: '100%' }} onClick={handleSaveTemplate}>
-              {templateSaved ? '¡Guardado!' : 'Guardar como plantilla'}
+              {templateSaved ? 'Saved!' : 'Save as template'}
             </button>
           </div>
 
-          {/* Atajos de teclado */}
+          {/* Keyboard shortcuts */}
           <div className="card" style={{ padding: 14, marginTop: 12 }}>
-            <div className="t-tag" style={{ marginBottom: 6 }}>Atajos de teclado</div>
+            <div className="t-tag" style={{ marginBottom: 6 }}>Keyboard Shortcuts</div>
             <div className="row" style={{ marginBottom: 4, fontSize: 12 }}>
-              <span className="muted">Crear sala</span><div className="spacer"/><Kbd>Ctrl</Kbd><Kbd>Enter</Kbd>
+              <span className="muted">Create game</span><div className="spacer"/><Kbd>Ctrl</Kbd><Kbd>Enter</Kbd>
             </div>
             <div className="row" style={{ fontSize: 12 }}>
-              <span className="muted">Cancelar</span><div className="spacer"/><Kbd>Esc</Kbd>
+              <span className="muted">Cancel</span><div className="spacer"/><Kbd>Esc</Kbd>
             </div>
           </div>
 
-          {/* Mis plantillas */}
+          {/* My templates */}
           <div className="card" style={{ padding: 14, marginTop: 12 }}>
-            <div className="t-tag" style={{ marginBottom: 8 }}>Mis plantillas</div>
+            <div className="t-tag" style={{ marginBottom: 8 }}>My Templates</div>
             {visibleTemplates.length === 0 ? (
-              <span className="muted" style={{ fontSize: 12 }}>Sin plantillas guardadas</span>
+              <span className="muted" style={{ fontSize: 12 }}>No saved templates</span>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {visibleTemplates.map((t) => (

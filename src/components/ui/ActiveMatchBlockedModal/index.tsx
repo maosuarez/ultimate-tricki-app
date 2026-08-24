@@ -78,12 +78,12 @@ export const ActiveMatchBlockedModal: FC<ActiveMatchBlockedModalProps> = ({
         </div>
 
         <div>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Partida en progreso</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>Match in Progress</div>
           <div
             className="t-cap"
             style={{ marginTop: 6, maxWidth: 280, lineHeight: 1.4 }}
           >
-            Debes terminar o abandonar la partida actual para jugar otra
+            You must finish or leave the active match before starting another.
           </div>
         </div>
 
@@ -93,14 +93,14 @@ export const ActiveMatchBlockedModal: FC<ActiveMatchBlockedModalProps> = ({
             style={{ flex: 1 }}
             onClick={onClose}
           >
-            Cancelar
+            Cancel
           </button>
           <button
             className="btn primary"
             style={{ flex: 1 }}
             onClick={handleGoToActiveMatch}
           >
-            Volver a partida activa
+            Return to Match
           </button>
         </div>
       </div>

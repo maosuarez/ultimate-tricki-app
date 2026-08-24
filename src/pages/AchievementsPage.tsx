@@ -15,12 +15,12 @@ function formatUnlockedAt(iso: string): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return 'hoy';
-  if (diffDays === 1) return 'ayer';
-  if (diffDays < 7) return `hace ${diffDays} días`;
-  if (diffDays < 14) return 'hace 1 semana';
-  if (diffDays < 30) return `hace ${Math.floor(diffDays / 7)} semanas`;
-  return date.toLocaleDateString('es-ES');
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return 'yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 14) return '1 week ago';
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  return date.toLocaleDateString('en-US');
 }
 
 interface AchievementCardProps {
@@ -43,8 +43,8 @@ function AchievementCard({ achievement: a }: AchievementCardProps): React.ReactE
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 3 }}>{a.name}</div>
           <div className="t-cap" style={{ marginBottom: 8, color: 'var(--text-3)' }}>{a.description}</div>
           {a.unlocked
-            ? <span className="chip green" style={{ fontSize: 11 }}><Icon name="check" size={10}/> Desbloqueado</span>
-            : <span className="chip" style={{ fontSize: 11, color: 'var(--fg-muted)' }}><Icon name="lock" size={10}/> Bloqueado</span>
+            ? <span className="chip green" style={{ fontSize: 11 }}><Icon name="check" size={10}/> Unlocked</span>
+            : <span className="chip" style={{ fontSize: 11, color: 'var(--fg-muted)' }}><Icon name="lock" size={10}/> Locked</span>
           }
           {a.unlocked && a.unlockedAt && (
             <div className="t-cap" style={{ marginTop: 5, color: 'var(--text-3)', fontSize: 10 }}>
@@ -66,11 +66,11 @@ export function ViewAchievements({ navigate, blueColor: _blueColor, redColor: _r
       <div className="row" style={{ marginBottom: 20, alignItems: 'flex-start' }}>
         <div>
           <button className="btn ghost sm" onClick={() => navigate('home')} style={{ marginBottom: 10 }}>
-            <Icon name="arrow-l" size={14}/> Inicio
+            <Icon name="arrow-l" size={14}/> Home
           </button>
-          <div className="t-h1" style={{ marginBottom: 6 }}>Logros</div>
+          <div className="t-h1" style={{ marginBottom: 6 }}>Achievements</div>
           <div className="row" style={{ gap: 8 }}>
-            <span className="chip green"><Icon name="trophy" size={11}/> {unlocked} / {total} desbloqueados</span>
+            <span className="chip green"><Icon name="trophy" size={11}/> {unlocked} / {total} unlocked</span>
           </div>
         </div>
       </div>
@@ -78,7 +78,7 @@ export function ViewAchievements({ navigate, blueColor: _blueColor, redColor: _r
       {/* Progress bar */}
       <div className="card" style={{ padding: 16, marginBottom: 20 }}>
         <div className="row" style={{ marginBottom: 8 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-2)' }}>Progreso total</span>
+          <span style={{ fontSize: 13, color: 'var(--text-2)' }}>Total Progress</span>
           <div className="spacer"/>
           <span className="t-mono" style={{ fontSize: 12, color: 'var(--text-3)' }}>
             {progress}%
@@ -89,11 +89,11 @@ export function ViewAchievements({ navigate, blueColor: _blueColor, redColor: _r
 
       {/* Loading / error states */}
       {loading && (
-        <div className="t-cap" style={{ textAlign: 'center', padding: 32 }}>Cargando…</div>
+        <div className="t-cap" style={{ textAlign: 'center', padding: 32 }}>Loading…</div>
       )}
       {error && !loading && (
         <div className="t-cap" style={{ textAlign: 'center', padding: 32, color: 'var(--red)' }}>
-          Error al cargar logros: {error}
+          Error loading achievements: {error}
         </div>
       )}
 

@@ -60,23 +60,23 @@ export function ViewRanking({ navigate, blueColor: _blueColor, redColor: _redCol
       <div className="row" style={{ marginBottom: 20, alignItems: 'flex-start' }}>
         <div>
           <button className="btn ghost sm" onClick={() => navigate('home')} style={{ marginBottom: 10 }}>
-            <Icon name="arrow-l" size={14}/> Inicio
+            <Icon name="arrow-l" size={14}/> Home
           </button>
-          <div className="t-h1" style={{ marginBottom: 6 }}>Ranking Global</div>
+          <div className="t-h1" style={{ marginBottom: 6 }}>Global Ranking</div>
         </div>
         <div className="spacer"/>
         <span className="chip amber" style={{ alignSelf: 'flex-end', marginBottom: 2, fontSize: 11 }}>
-          Temporada actual
+          Current Season
         </span>
       </div>
 
       {/* Loading / error states */}
       {loading && (
-        <div className="t-cap" style={{ textAlign: 'center', padding: 32 }}>Cargando…</div>
+        <div className="t-cap" style={{ textAlign: 'center', padding: 32 }}>Loading…</div>
       )}
       {error && !loading && (
         <div className="t-cap" style={{ textAlign: 'center', padding: 32, color: 'var(--red)' }}>
-          Error al cargar ranking: {error}
+          Error loading ranking: {error}
         </div>
       )}
 
@@ -109,7 +109,7 @@ export function ViewRanking({ navigate, blueColor: _blueColor, redColor: _redCol
                     <Avatar name={name} size={28} />
                     <div style={{ fontWeight: 600 }}>{name}</div>
                     <div className="t-mono" style={{ fontSize: 12 }}>{e.profile.rating}</div>
-                    <div className="t-cap">{e.stats.totalMatches} partidas</div>
+                    <div className="t-cap">{e.stats.totalMatches} matches</div>
                     <span className={`chip ${wr >= 60 ? 'green' : wr < 50 ? 'red' : ''}`} style={{ fontSize: 11 }}>
                       {wr}% WR
                     </span>
@@ -119,7 +119,7 @@ export function ViewRanking({ navigate, blueColor: _blueColor, redColor: _redCol
             </div>
           )}
 
-          {/* My position — pinned at bottom */}
+          {/* My position */}
           {myEntry && (
             <div style={{
               display: 'grid',
@@ -133,10 +133,10 @@ export function ViewRanking({ navigate, blueColor: _blueColor, redColor: _redCol
               <Avatar name={myEntry.profile.displayName || myEntry.profile.username} size={28} status="online" />
               <div>
                 <span style={{ fontWeight: 600 }}>{myEntry.profile.displayName || myEntry.profile.username}</span>
-                <span className="chip" style={{ marginLeft: 8, fontSize: 10 }}>TÚ</span>
+                <span className="chip" style={{ marginLeft: 8, fontSize: 10 }}>YOU</span>
               </div>
               <div className="t-mono" style={{ fontSize: 12 }}>{myEntry.profile.rating}</div>
-              <div className="t-cap">{myEntry.stats.totalMatches} partidas</div>
+              <div className="t-cap">{myEntry.stats.totalMatches} matches</div>
               <span className="chip" style={{ fontSize: 11 }}>{winRate(myEntry)}% WR</span>
             </div>
           )}

@@ -4,16 +4,12 @@ import type { ScreenName } from '../types/game';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUserStore } from '../stores/userStore';
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
 export interface ViewSettingsProps {
   navigate: (screen: ScreenName) => void;
   blueColor: string;
 }
 
-// ─── Section definition ───────────────────────────────────────────────────────
-
-type SectionKey = 'apariencia' | 'audio' | 'juego' | 'a11y' | 'account' | 'developer';
+type SectionKey = 'appearance' | 'audio' | 'gameplay' | 'a11y' | 'account' | 'developer';
 
 interface SectionDef {
   k: SectionKey;
@@ -22,15 +18,13 @@ interface SectionDef {
 }
 
 const SECTIONS: SectionDef[] = [
-  { k: 'apariencia', icon: 'palette',       label: 'Apariencia' },
+  { k: 'appearance', icon: 'palette',       label: 'Appearance' },
   { k: 'audio',      icon: 'volume',        label: 'Audio' },
-  { k: 'juego',      icon: 'gamepad',       label: 'Juego' },
-  { k: 'a11y',       icon: 'accessibility', label: 'Accesibilidad' },
-  { k: 'account',    icon: 'user',          label: 'Cuenta' },
-  { k: 'developer',  icon: 'cpu',           label: 'Desarrollador' },
+  { k: 'gameplay',   icon: 'gamepad',       label: 'Gameplay' },
+  { k: 'a11y',       icon: 'accessibility', label: 'Accessibility' },
+  { k: 'account',    icon: 'user',          label: 'Account' },
+  { k: 'developer',  icon: 'cpu',           label: 'Developer' },
 ];
-
-// ─── Shared primitives ────────────────────────────────────────────────────────
 
 interface SettingsGroupProps {
   title: string;
@@ -81,37 +75,35 @@ const Toggle: FC<ToggleProps> = ({ on, onChange }) => (
   <div className={`switch ${on ? 'on' : ''}`} onClick={() => onChange(!on)} />
 );
 
-// ─── Apariencia ───────────────────────────────────────────────────────────────
-
 const COLORS_X = ['#3B82F6', '#06B6D4', '#8B5CF6', '#22C55E'] as const;
 const COLORS_O = ['#EF4444', '#F59E0B', '#EC4899', '#71717A'] as const;
 
 type ThemeValue = 'dark' | 'light' | 'system';
 type DensityValue = 'compact' | 'comfortable' | 'spacious';
 
-function SettingsApariencia(): React.ReactElement {
+function SettingsAppearance(): React.ReactElement {
   const { theme, density, colorX, colorO, setTheme, setDensity, setColorX, setColorO } =
     useSettingsStore();
 
   const themeOptions: { v: ThemeValue; label: string }[] = [
-    { v: 'dark', label: 'Oscuro' },
-    { v: 'light', label: 'Claro' },
-    { v: 'system', label: 'Sistema' },
+    { v: 'dark', label: 'Dark' },
+    { v: 'light', label: 'Light' },
+    { v: 'system', label: 'System' },
   ];
 
   const densityOptions: { v: DensityValue; label: string }[] = [
-    { v: 'compact', label: 'Compacta' },
-    { v: 'comfortable', label: 'Cómoda' },
-    { v: 'spacious', label: 'Amplia' },
+    { v: 'compact', label: 'Compact' },
+    { v: 'comfortable', label: 'Comfortable' },
+    { v: 'spacious', label: 'Spacious' },
   ];
 
   return (
     <div>
-      <div className="t-h1" style={{ marginBottom: 18 }}>Apariencia</div>
-      <SettingsGroup title="Tema">
+      <div className="t-h1" style={{ marginBottom: 18 }}>Appearance</div>
+      <SettingsGroup title="Theme">
         <SettingsRow
-          label="Modo"
-          desc="Recomendado: oscuro"
+          label="Mode"
+          desc="Recommended: Dark"
           control={
             <div className="row" style={{ gap: 4 }}>
               {themeOptions.map(({ v, label }) => (
@@ -128,8 +120,8 @@ function SettingsApariencia(): React.ReactElement {
           }
         />
         <SettingsRow
-          label="Densidad"
-          desc="Espaciado entre elementos"
+          label="Density"
+          desc="Spacing between UI elements"
           control={
             <div className="row" style={{ gap: 4 }}>
               {densityOptions.map(({ v, label }) => (
@@ -146,10 +138,10 @@ function SettingsApariencia(): React.ReactElement {
           }
         />
       </SettingsGroup>
-      <SettingsGroup title="Colores de jugadores">
+      <SettingsGroup title="Player Colors">
         <SettingsRow
-          label="Color de X"
-          desc="Tu lado en partidas"
+          label="X Color"
+          desc="Your piece color"
           control={
             <div className="row" style={{ gap: 6 }}>
               {COLORS_X.map((c) => (
@@ -170,8 +162,8 @@ function SettingsApariencia(): React.ReactElement {
           }
         />
         <SettingsRow
-          label="Color de O"
-          desc="Oponente"
+          label="O Color"
+          desc="Opponent piece color"
           last
           control={
             <div className="row" style={{ gap: 6 }}>
@@ -197,8 +189,6 @@ function SettingsApariencia(): React.ReactElement {
   );
 }
 
-// ─── Audio ────────────────────────────────────────────────────────────────────
-
 function SettingsAudio(): React.ReactElement {
   const { colorX, volumeMaster, volumeSfx, volumeMusic, mutedAll, setVolumeMaster, setVolumeSfx, setVolumeMusic, setMutedAll } =
     useSettingsStore();
@@ -206,15 +196,15 @@ function SettingsAudio(): React.ReactElement {
   return (
     <div>
       <div className="t-h1" style={{ marginBottom: 18 }}>Audio</div>
-      <SettingsGroup title="Mezcla">
+      <SettingsGroup title="Mix">
         <SettingsRow
-          label="Silenciar todo"
-          desc="Desactiva todo el audio sin cambiar los niveles guardados"
+          label="Mute all"
+          desc="Disable all audio without changing saved levels"
           control={<Toggle on={mutedAll} onChange={setMutedAll} />}
         />
         <SettingsRow
-          label="Volumen general"
-          desc={`Maestro · ${volumeMaster}%`}
+          label="Master Volume"
+          desc={`Master · ${volumeMaster}%`}
           control={
             <input
               type="range"
@@ -227,8 +217,8 @@ function SettingsAudio(): React.ReactElement {
           }
         />
         <SettingsRow
-          label="Efectos de juego"
-          desc={`Click, victoria, contador · ${volumeSfx}%`}
+          label="Game Sound Effects"
+          desc={`Click, capture, victory, timer · ${volumeSfx}%`}
           control={
             <input
               type="range"
@@ -241,8 +231,8 @@ function SettingsAudio(): React.ReactElement {
           }
         />
         <SettingsRow
-          label="Música ambiente"
-          desc={`Lobby y menús · ${volumeMusic}%`}
+          label="Ambient Music"
+          desc={`Lobby and menus · ${volumeMusic}%`}
           last
           control={
             <input
@@ -260,9 +250,7 @@ function SettingsAudio(): React.ReactElement {
   );
 }
 
-// ─── Juego ────────────────────────────────────────────────────────────────────
-
-function SettingsJuego(): React.ReactElement {
+function SettingsGameplay(): React.ReactElement {
   const {
     showCoordinates,
     highlightLastMove,
@@ -274,21 +262,21 @@ function SettingsJuego(): React.ReactElement {
 
   return (
     <div>
-      <div className="t-h1" style={{ marginBottom: 18 }}>Juego</div>
-      <SettingsGroup title="Comportamiento">
+      <div className="t-h1" style={{ marginBottom: 18 }}>Gameplay</div>
+      <SettingsGroup title="Behavior">
         <SettingsRow
-          label="Mostrar coordenadas"
-          desc="Fila y columna de cada celda"
+          label="Show coordinates"
+          desc="Row and column indices on board"
           control={<Toggle on={showCoordinates} onChange={setShowCoordinates} />}
         />
         <SettingsRow
-          label="Resaltar último movimiento"
-          desc="Indica visualmente la última jugada"
+          label="Highlight last move"
+          desc="Visually mark the previous move"
           control={<Toggle on={highlightLastMove} onChange={setHighlightLastMove} />}
         />
         <SettingsRow
-          label="Confirmar al rendirse"
-          desc="Muestra diálogo antes de abandonar"
+          label="Confirm resignation"
+          desc="Show confirmation dialog before resigning"
           last
           control={<Toggle on={confirmResign} onChange={setConfirmResign} />}
         />
@@ -297,18 +285,16 @@ function SettingsJuego(): React.ReactElement {
   );
 }
 
-// ─── Accesibilidad ────────────────────────────────────────────────────────────
-
 function SettingsA11y(): React.ReactElement {
   const { reduceMotion, setReduceMotion } = useSettingsStore();
 
   return (
     <div>
-      <div className="t-h1" style={{ marginBottom: 18 }}>Accesibilidad</div>
+      <div className="t-h1" style={{ marginBottom: 18 }}>Accessibility</div>
       <SettingsGroup title="Visual">
         <SettingsRow
-          label="Reducir movimiento"
-          desc="Desactiva animaciones largas"
+          label="Reduce motion"
+          desc="Disable complex animations and transitions"
           last
           control={<Toggle on={reduceMotion} onChange={setReduceMotion} />}
         />
@@ -316,8 +302,6 @@ function SettingsA11y(): React.ReactElement {
     </div>
   );
 }
-
-// ─── Cuenta ───────────────────────────────────────────────────────────────────
 
 interface SettingsAccountProps {
   navigate: (screen: ScreenName) => void;
@@ -332,18 +316,18 @@ function SettingsAccount({ navigate }: SettingsAccountProps): React.ReactElement
   };
 
   if (isGuest) {
-    const name = guestName ?? 'Invitado';
+    const name = guestName ?? 'Guest';
     return (
       <div>
-        <div className="t-h1" style={{ marginBottom: 18 }}>Cuenta</div>
-        <SettingsGroup title="Sesión actual">
+        <div className="t-h1" style={{ marginBottom: 18 }}>Account</div>
+        <SettingsGroup title="Current Session">
           <SettingsRow
-            label="Modo invitado"
-            desc={`Jugando como ${name}`}
+            label="Guest Mode"
+            desc={`Playing as ${name}`}
             last
             control={
               <button className="btn sm primary" onClick={() => navigate('login')}>
-                Iniciar sesión
+                Sign In
               </button>
             }
           />
@@ -358,31 +342,31 @@ function SettingsAccount({ navigate }: SettingsAccountProps): React.ReactElement
 
   return (
     <div>
-      <div className="t-h1" style={{ marginBottom: 18 }}>Cuenta</div>
-      <SettingsGroup title="Perfil">
+      <div className="t-h1" style={{ marginBottom: 18 }}>Account</div>
+      <SettingsGroup title="Profile">
         <SettingsRow
           label="Email"
-          desc={`${email} · verificado`}
+          desc={`${email} · verified`}
           control={<span className="t-mono" style={{ color: 'var(--fg-muted)' }}>{email}</span>}
         />
         <SettingsRow
-          label="Nombre visible"
+          label="Display Name"
           control={<span className="t-mono">{displayName}</span>}
         />
         <SettingsRow
-          label="ELO"
+          label="ELO Rating"
           last
           control={<span className="t-mono">{rating}</span>}
         />
       </SettingsGroup>
-      <SettingsGroup title="Sesión">
+      <SettingsGroup title="Session">
         <SettingsRow
-          label="Cerrar sesión"
-          desc="Saldrás de tu cuenta en este dispositivo"
+          label="Sign Out"
+          desc="Sign out of your account on this device"
           last
           control={
             <button className="btn sm" onClick={handleSignOut}>
-              Cerrar sesión
+              Sign Out
             </button>
           }
         />
@@ -390,8 +374,6 @@ function SettingsAccount({ navigate }: SettingsAccountProps): React.ReactElement
     </div>
   );
 }
-
-// ─── Desarrollador ───────────────────────────────────────────────────────────
 
 interface SettingsDeveloperProps {
   navigate: (screen: ScreenName) => void;
@@ -402,55 +384,51 @@ function SettingsDeveloper({ navigate }: SettingsDeveloperProps): React.ReactEle
 
   return (
     <div>
-      <div className="t-h1" style={{ marginBottom: 18 }}>Desarrollador</div>
-      <SettingsGroup title="Modo desarrollador">
+      <div className="t-h1" style={{ marginBottom: 18 }}>Developer</div>
+      <SettingsGroup title="Developer Mode">
         <SettingsRow
-          label="Activar modo desarrollador"
-          desc="Habilita herramientas avanzadas: agentes Python, logs de depuración, y más opciones a futuro."
+          label="Enable Developer Mode"
+          desc="Enables advanced tools: custom Python agents, debug logs, and experimental engine features."
           control={<Toggle on={developerMode} onChange={setDeveloperMode} />}
         />
         {developerMode && (
           <div style={{ padding: '8px 18px 10px', borderBottom: '1px solid var(--border)' }}>
             <span className="chip amber" style={{ fontSize: 11 }}>
-              Las herramientas de desarrollo pueden afectar el rendimiento.
+              Developer tools may impact runtime performance.
             </span>
           </div>
         )}
         {developerMode && (
           <SettingsRow
-            label="Agentes Python"
-            desc="Carga y juega contra agentes escritos en Python"
+            label="Python Agents"
+            desc="Load and test against external Python AI agents"
             last
             control={
               <button className="btn sm" onClick={() => navigate('developer-agents')}>
-                Abrir
+                Open
               </button>
             }
           />
         )}
         {!developerMode && (
           <SettingsRow
-            label="Agentes Python"
-            desc="Activa el modo desarrollador para acceder a esta herramienta"
+            label="Python Agents"
+            desc="Enable developer mode to access this tool"
             last
             control={
               <button className="btn sm" disabled style={{ opacity: 0.4, cursor: 'not-allowed' }}>
-                Abrir
+                Open
               </button>
             }
           />
         )}
       </SettingsGroup>
-
-      {/* Futuras opciones de desarrollador aquí */}
     </div>
   );
 }
 
-// ─── Root ─────────────────────────────────────────────────────────────────────
-
 export function ViewSettings({ navigate }: ViewSettingsProps): React.ReactElement {
-  const [section, setSection] = React.useState<SectionKey>('apariencia');
+  const [section, setSection] = React.useState<SectionKey>('appearance');
 
   return (
     <div
@@ -467,7 +445,7 @@ export function ViewSettings({ navigate }: ViewSettingsProps): React.ReactElemen
         }}
       >
         <div className="t-tag" style={{ padding: '4px 10px', marginBottom: 8 }}>
-          Configuración
+          Settings
         </div>
         {SECTIONS.map((s) => (
           <div
@@ -483,9 +461,9 @@ export function ViewSettings({ navigate }: ViewSettingsProps): React.ReactElemen
 
       {/* Content */}
       <div style={{ padding: 28, overflow: 'auto' }}>
-        {section === 'apariencia' && <SettingsApariencia />}
+        {section === 'appearance' && <SettingsAppearance />}
         {section === 'audio'      && <SettingsAudio />}
-        {section === 'juego'      && <SettingsJuego />}
+        {section === 'gameplay'   && <SettingsGameplay />}
         {section === 'a11y'       && <SettingsA11y />}
         {section === 'account'    && <SettingsAccount navigate={navigate} />}
         {section === 'developer'  && <SettingsDeveloper navigate={navigate} />}

@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { wsService } from '@/services/wsService';
+import { wsService } from '@/services/transport/ws.service';
 import { supabaseService } from '@/services/supabase.service';
 import { useNetworkStore } from '@/stores/network.store';
 import { useGameStore } from '@/stores/gameStore';
-import { playMatchFound } from '@/services/audioService';
+import { playMatchFound } from '@/services/audio.service';
 import type { ScreenName } from '@/types/game';
 
 function nowTime(): string {
