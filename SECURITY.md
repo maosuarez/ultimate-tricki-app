@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-We actively provide security updates and bug fixes to the latest versions of **Tricki Avanzado**.
+We actively provide security updates and bug fixes to the latest versions of **Ultimate Tic Tac Toe**.
 
 | Version | Supported          |
 | ------- | ------------------ |
@@ -13,7 +13,7 @@ We actively provide security updates and bug fixes to the latest versions of **T
 
 ## Reporting a Vulnerability
 
-We take the security of Tricki Avanzado seriously. If you believe you have found a security vulnerability in our application, code, or infrastructure, please **do not open a public issue**.
+We take the security of Ultimate Tic Tac Toe seriously. If you believe you have found a security vulnerability in our application, code, or infrastructure, please **do not open a public issue**.
 
 ### How to Report
 

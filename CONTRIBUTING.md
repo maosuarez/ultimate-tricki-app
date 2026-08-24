@@ -1,6 +1,6 @@
-# Contributing to Tricki Avanzado (Ultimate Tic Tac Toe)
+# Contributing to Ultimate Tic Tac Toe
 
-Thank you for your interest in contributing to **Tricki Avanzado**! We welcome contributions from developers of all skill levels.
+Thank you for your interest in contributing to **Ultimate Tic Tac Toe**! We welcome contributions from developers of all skill levels.
 
 To maintain code quality, architectural consistency, and predictable evolution, please read and follow these guidelines.
 

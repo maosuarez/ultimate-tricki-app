@@ -1,4 +1,4 @@
-# Tricki Avanzado (Ultimate Tic Tac Toe)
+# Ultimate Tic Tac Toe
 
 > High-performance Ultimate Tic Tac Toe application built with **Tauri v2 + React 19 + TypeScript + Zustand + Rust + Supabase**.
 
@@ -9,7 +9,7 @@
 
 ---
 
-## What is Tricki Avanzado?
+## What is Ultimate Tic Tac Toe?
 
 A high-performance implementation of **Ultimate Tic Tac Toe** designed for both native desktop and web browsers. It supports local pass-and-play, AI matches (with built-in algorithms and custom Python agents), and real-time multiplayer.
 

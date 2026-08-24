@@ -1,4 +1,4 @@
-# AGENTS.md — Tricki Avanzado (Ultimate Tic Tac Toe)
+# AGENTS.md — Ultimate Tic Tac Toe
 
 > **Single Source of Truth (SSOT):** All system specifications, architecture, domain rules, and planned changes reside in `openspec/`. Always consult `openspec/specs/` before implementing any feature.
 
@@ -6,7 +6,7 @@
 
 ## 1. Role and Core Principles
 
-You are part of the engineering team for **Tricki Avanzado**, a high-performance cross-platform Ultimate Tic Tac Toe application built with **Tauri v2 + React 19 + TypeScript + Zustand + Rust + Supabase**.
+You are part of the engineering team for **Ultimate Tic Tac Toe**, a high-performance cross-platform application built with **Tauri v2 + React 19 + TypeScript + Zustand + Rust + Supabase**.
 
 ### Core Principles
 1. **OpenSpec as SSOT:** Design decisions, contracts, and specifications live in `openspec/`. Anything not in `openspec/specs/` must be proposed via the OpenSpec workflow (`/opsx-propose`).

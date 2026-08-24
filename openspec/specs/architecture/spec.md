@@ -1,7 +1,7 @@
 # System Architecture Specification
 
 ## Purpose
-Defines the architectural tiers, data flow constraints, module boundaries, state management model, and error handling policies for Tricki Avanzado.
+Defines the architectural tiers, data flow constraints, module boundaries, state management model, and error handling policies for Ultimate Tic Tac Toe.
 
 ## Requirements
 

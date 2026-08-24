@@ -3,7 +3,7 @@ schema: spec-driven
 # Project context
 # Injected into AI context when planning and creating artifacts.
 context: |
-  Project: Tricki Avanzado (Ultimate Tic Tac Toe desktop application)
+  Project: Ultimate Tic Tac Toe (High-performance desktop & web application)
   Tech Stack:
     - Frontend: React 19, TypeScript 5.8, Vite 7, Zustand 5, Tailwind CSS
     - Native Core: Tauri v2, Rust (tokio, serde)
@@ -42,4 +42,4 @@ operations:
       - Maintain existing code docstrings and type safety
   archive:
     guidance:
-      - Sincronizar siempre los delta specs con los main specs antes de archivar
+      - Always synchronize delta specs with main specs before archiving

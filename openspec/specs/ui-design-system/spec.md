@@ -1,7 +1,7 @@
 # UI & Design System Specification
 
 ## Purpose
-Defines visual aesthetics, color palettes, responsive layouts, procedural audio feedback, and accessibility requirements for Tricki Avanzado.
+Defines visual aesthetics, color palettes, responsive layouts, procedural audio feedback, and accessibility requirements for Ultimate Tic Tac Toe.
 
 ## Requirements
 

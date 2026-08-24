@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Tricki — Ultimate Tic Tac Toe",
+        "title": "Ultimate Tic Tac Toe",
         "width": 1280,
         "height": 800,
         "minWidth": 1280,
